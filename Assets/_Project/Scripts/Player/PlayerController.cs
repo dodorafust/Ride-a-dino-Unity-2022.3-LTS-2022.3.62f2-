@@ -17,12 +17,14 @@ public class PlayerController : MonoBehaviour
     [Header("Jump from Dino")]
     public float dinoJumpUp = 9f;
     public float dinoJumpForward = 6f;
-    public float catchLockoutAfterJump = 0.25f;
+    public float catchLockoutAfterJump = 0.08f;    // chỉ để chống "ăn" 2 lần cùng 1 lần bấm
 
     [Header("Catch")]
-    public float scanRadius = 14f;
+    public float scanRadius = 20f;
     public float frontDotMin = 0f;
-    public float switchMargin = 2f;
+    public float aimMaxAngle = 65f;                // lệch tối đa so với tâm camera (độ, theo phương ngang)
+    public float aimDistanceWeight = 1.2f;         // 1m xa hơn ~ lệch thêm 1.2 độ
+    public float aimSwitchDegrees = 4f;            // chống nhấp nháy khi 2 con gần như thẳng hàng
     public float catchDuration = 0.18f;
     public float autoCatchHeight = 0.5f;
     public float steerDelayAfterMount = 0.6f;
@@ -49,6 +51,8 @@ public class PlayerController : MonoBehaviour
     public Dino CurrentDino { get { return currentDino; } }
     public Vector3 Velocity { get { return rb.velocity; } }
     public bool RunActive { get; private set; }     // đang trong chế độ bắt Dino
+    // Đang ở trên không và có Dino được nhắm -> bấm nút nhảy là bắt ngay (UI đổi icon mũi tên xuống)
+    public bool CatchReady { get { return State == PlayerState.Jumping && targetDino != null; } }
 
     Rigidbody rb;
     Collider body;
@@ -63,6 +67,8 @@ public class PlayerController : MonoBehaviour
     float catchTimer, steerEnableTime, catchLockUntil, lastGroundedTime;
     bool jumpPressed;
     bool diesOnGround;
+    bool restoreInterpolation;
+    float airRestTime;
     bool hasIsRunning, hasIsJumping, hasIsGrounded, hasIsFalling, hasVerticalSpeed,
          hasJumpStart, hasLand, hasIsRiding, hasIsHolding, hasIsLassoing, hasJumpFromDino, hasDie;
     readonly Collider[] hitBuf = new Collider[32];
@@ -130,6 +136,12 @@ public class PlayerController : MonoBehaviour
     void FixedUpdate()
     {
         if (rb.isKinematic) return;
+        if (restoreInterpolation)
+        {
+            // Bật lại nội suy SAU 1 bước vật lý kể từ lúc teleport -> không bị kéo lại vị trí cũ
+            restoreInterpolation = false;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
         rb.AddForce(Physics.gravity * (gravityScale - 1f), ForceMode.Acceleration);
         if (State == PlayerState.Walking)
         {
@@ -158,12 +170,22 @@ public class PlayerController : MonoBehaviour
         if (moveInput.sqrMagnitude > 1f) moveInput.Normalize();
     }
 
+    // Mặt đất = layer Ground + mọi collider rắn ở layer Default (sàn Pen, bục, vật cản...).
+    // Loại trừ Ignore Raycast / Water / UI / Player / Dino và mọi Trigger.
+    int GroundCheckMask()
+    {
+        const int excluded = (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7);
+        return (groundMask.value | 1) & ~excluded;
+    }
+
     bool CheckGroundRaw()
     {
+        int mask = GroundCheckMask();
         RaycastHit hit;
-        if (Physics.SphereCast(transform.position + Vector3.up * 0.2f, 0.35f, Vector3.down, out hit, 0.88f, groundMask))
+        if (Physics.SphereCast(transform.position + Vector3.up * 0.2f, 0.35f, Vector3.down, out hit, 0.88f,
+                               mask, QueryTriggerInteraction.Ignore))
             return true;
-        return Physics.Raycast(transform.position, Vector3.down, 1.04f, groundMask);
+        return Physics.Raycast(transform.position, Vector3.down, 1.04f, mask, QueryTriggerInteraction.Ignore);
     }
 
     bool IsGrounded()
@@ -187,7 +209,14 @@ public class PlayerController : MonoBehaviour
     Vector3 RespawnPos()
     {
         GameManager gm = GameManager.Instance;
-        return (gm != null && gm.respawnPoint != null) ? gm.respawnPoint.position : startPosition;
+        Vector3 p = (gm != null && gm.respawnPoint != null) ? gm.respawnPoint.position : startPosition;
+
+        // Dò xuống để đặt nhân vật đứng ĐÚNG trên mặt đất (PlayerSpawn có thể đặt lơ lửng)
+        RaycastHit hit;
+        if (Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out hit, 40f,
+                            GroundCheckMask(), QueryTriggerInteraction.Ignore))
+            p = hit.point + Vector3.up * 1.02f;
+        return p;
     }
 
     void SetKinematic(bool kinematic)
@@ -199,10 +228,17 @@ public class PlayerController : MonoBehaviour
     void TeleportTo(Vector3 p)
     {
         transform.SetParent(null);
-        SetKinematic(false);
+        rb.isKinematic = false;
+        rb.interpolation = RigidbodyInterpolation.None;     // tắt nội suy để không bị kéo về vị trí cũ
         rb.velocity = Vector3.zero;
-        transform.position = p;
-        transform.rotation = Quaternion.identity;
+        rb.angularVelocity = Vector3.zero;
+        rb.position = p;
+        rb.rotation = Quaternion.identity;
+        transform.SetPositionAndRotation(p, Quaternion.identity);
+        Physics.SyncTransforms();                           // AutoSyncTransforms đang tắt -> phải đồng bộ tay
+        restoreInterpolation = true;                        // bật lại ở FixedUpdate kế tiếp
+        lastGroundedTime = Time.time;
+        airRestTime = 0f;
         if (camCtrl != null) camCtrl.Snap();
     }
 
@@ -241,24 +277,30 @@ public class PlayerController : MonoBehaviour
         if (RunActive) UpdateCatchTarget(); else SetTarget(null);
         bool canCatch = RunActive && Time.time >= catchLockUntil;
 
-        if (canCatch && jumpPressed && targetDino != null)
+        // Bấm nút nhảy / Space trên không = quăng dây bắt NGAY LẬP TỨC con đang được nhắm
+        if (canCatch && jumpPressed)
         {
-            BeginCatch(targetDino);
-            return;
+            Dino pick = targetDino != null ? targetDino : FindBestByCameraAim();
+            if (pick != null) { BeginCatch(pick); return; }
         }
 
-        if (rb.velocity.y > 0.1f) return;
+        if (rb.velocity.y > 0.1f) { airRestTime = 0f; return; }
 
         bool nearGround = Physics.Raycast(transform.position, Vector3.down,
-                                          1f + autoCatchHeight, groundMask);
+                                          1f + autoCatchHeight, GroundCheckMask(), QueryTriggerInteraction.Ignore);
         if (nearGround && canCatch)
         {
             Dino auto = targetDino != null ? targetDino : FindNearest(false);
             if (auto != null) { BeginCatch(auto); return; }
         }
 
-        if (CheckGroundRaw())
+        // Lưới an toàn: đứng yên theo trục Y một lúc (đang tựa lên vật gì đó) thì coi như đã chạm đất
+        if (Mathf.Abs(rb.velocity.y) < 0.05f) airRestTime += Time.deltaTime;
+        else airRestTime = 0f;
+
+        if (CheckGroundRaw() || airRestTime > 0.3f)
         {
+            airRestTime = 0f;
             lastGroundedTime = Time.time;
             SetTarget(null);
             if (diesOnGround) { Die(DeathReason.MissedJump); return; }
@@ -303,23 +345,52 @@ public class PlayerController : MonoBehaviour
         return best;
     }
 
+    // Chọn con Dino gần TÂM CAMERA nhất (theo phương ngang) -> xoay camera để đổi mục tiêu
+    float AimScore(Dino d)
+    {
+        Vector3 toPlayer = d.seat.position - transform.position;
+        Vector3 flatP = Vector3.ProjectOnPlane(toPlayer, Vector3.up);
+        if (flatP.magnitude > scanRadius * 1.15f) return float.MaxValue;
+        Vector3 fwd = CamForwardFlat();
+        if (flatP.sqrMagnitude > 0.01f && Vector3.Dot(flatP.normalized, fwd) < frontDotMin) return float.MaxValue;
+
+        Vector3 flatC = Vector3.ProjectOnPlane(d.seat.position - cam.position, Vector3.up);
+        float ang = flatC.sqrMagnitude > 0.01f ? Vector3.Angle(fwd, flatC) : 0f;
+        if (ang > aimMaxAngle) return float.MaxValue;
+        return ang + flatP.magnitude * aimDistanceWeight;
+    }
+
+    Dino FindBestByCameraAim()
+    {
+        int n = Physics.OverlapSphereNonAlloc(transform.position, scanRadius, hitBuf,
+                                              dinoMask, QueryTriggerInteraction.Collide);
+        Dino best = null;
+        float bestScore = float.MaxValue;
+        for (int i = 0; i < n; i++)
+        {
+            Dino d = hitBuf[i].GetComponentInParent<Dino>();
+            if (!IsSelectable(d)) continue;
+            float s = AimScore(d);
+            if (s < bestScore) { bestScore = s; best = d; }
+        }
+        return best;
+    }
+
     void UpdateCatchTarget()
     {
-        Dino best = FindNearest(true);
+        Dino best = FindBestByCameraAim();
+        if (best == null || best == targetDino) { SetTarget(best); return; }
 
-        bool oldValid = targetDino != null && IsSelectable(targetDino) &&
-                        DistTo(targetDino) <= scanRadius * 1.15f;
-
-        if (!oldValid) { SetTarget(best); return; }
-
-        if (best != null && best != targetDino &&
-            DistTo(best) + switchMargin < DistTo(targetDino))
+        bool oldValid = targetDino != null && IsSelectable(targetDino);
+        float oldScore = oldValid ? AimScore(targetDino) : float.MaxValue;
+        if (oldScore == float.MaxValue || AimScore(best) + aimSwitchDegrees < oldScore)
             SetTarget(best);
     }
 
     void SetTarget(Dino d)
     {
         if (targetDino == d) return;
+        Dino old = targetDino;
         if (targetDino != null) targetDino.SetHighlight(false);
         targetDino = d;
 
@@ -327,8 +398,12 @@ public class PlayerController : MonoBehaviour
         {
             d.SetHighlight(true);
             if (preview != null)
-                preview.Show(d.transform,
-                    new Vector3(transform.position.x, d.transform.position.y, transform.position.z));
+            {
+                // Đổi mục tiêu: vòng tròn bay từ con cũ sang con mới; lần đầu thì bay ra từ người chơi
+                Vector3 from = old != null ? old.transform.position
+                             : new Vector3(transform.position.x, d.transform.position.y, transform.position.z);
+                preview.Show(d.transform, from);
+            }
         }
         else if (preview != null) preview.Hide();
     }
@@ -482,7 +557,9 @@ public class PlayerController : MonoBehaviour
         if (animator != null && hasDie) animator.SetTrigger("Die");
         diesOnGround = false;
         lastDino = null;
+        catchLockUntil = 0f;
         State = PlayerState.Walking;
+        ResetAnimatorToIdle();
 
         string msg;
         switch (reason)
@@ -526,6 +603,22 @@ public class PlayerController : MonoBehaviour
         if (machine != null) machine.SetOccupied(false);
         machine = null;
         State = PlayerState.Walking;
+    }
+
+    // Sau khi hồi sinh: xoá mọi trạng thái nhảy/rơi trên Animator, về thẳng Idle
+    void ResetAnimatorToIdle()
+    {
+        if (animator == null) return;
+        if (hasIsJumping) animator.SetBool("IsJumping", false);
+        if (hasIsFalling) animator.SetBool("IsFalling", false);
+        if (hasIsRunning) animator.SetBool("IsRunning", false);
+        if (hasIsGrounded) animator.SetBool("IsGrounded", true);
+        if (hasVerticalSpeed) animator.SetFloat("VerticalSpeed", 0f);
+        if (hasJumpStart) animator.ResetTrigger("JumpStart");
+        if (hasLand) animator.ResetTrigger("Land");
+        if (hasJumpFromDino) animator.ResetTrigger("JumpFromDino");
+        int idle = Animator.StringToHash("Base Layer.Breathing Idle");
+        if (animator.HasState(0, idle)) animator.Play(idle, 0, 0f);
     }
 
     // ---------- Model & Animation ----------
