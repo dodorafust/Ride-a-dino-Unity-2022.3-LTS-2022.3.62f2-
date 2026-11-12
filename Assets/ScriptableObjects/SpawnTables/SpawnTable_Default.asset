@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93b606fb24ef4db4f8f307d286a90c28, type: 3}
+  m_Name: SpawnTable_Default
+  m_EditorClassIdentifier: 
+  entries:
+  - dino: {fileID: 11400000, guid: 88a541bce9ca75e45b38a8103f6c55f4, type: 2}
+    weight: 40
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 4ccb0a9020090d74b8dc08dda8b7c810, type: 2}
+    weight: 25
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: ca2cf2141c3795443b543b8e545b7b3b, type: 2}
+    weight: 20
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: ab5ce87f9eaf438498031d9f7ce09e7f, type: 2}
+    weight: 10
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: d850b3cb3b42d2e4c9953f3f19e0a9b3, type: 2}
+    weight: 8
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 4f37b17f5a8e134489a86d101d2b475b, type: 2}
+    weight: 4
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 41415b7375b752c4a997b44f43fc78c5, type: 2}
+    weight: 2
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 6ccb41282d5b1684bad3e0aa1e934c70, type: 2}
+    weight: 1
+    herdMin: 3
+    herdMax: 6
+    speedJitter: 0.5
+  variants:
+  - variant: {fileID: 11400000, guid: 6e5fcec86af0aad4b8264b822fc169ff, type: 2}
+    weight: 80
+  - variant: {fileID: 11400000, guid: 16cfbd0d70130874cb71e07fb28c5143, type: 2}
+    weight: 10
+  - variant: {fileID: 11400000, guid: edeccb57c4f25cd49983fbdf896c48f2, type: 2}
+    weight: 5
+  - variant: {fileID: 11400000, guid: 447d9d3d1637d3745b23e9b1a1d68d6e, type: 2}
+    weight: 3
+  - variant: {fileID: 11400000, guid: 7b471918cd2119c4f98c3b913ea16758, type: 2}
+    weight: 2
