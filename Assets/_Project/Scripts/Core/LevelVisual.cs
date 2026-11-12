@@ -1,8 +1,5 @@
 using System;
 using UnityEngine;
-
-// Skin theo level: kéo model (Blender) vào list, mỗi phần tử bật khi level >= fromLevel.
-// Luôn chỉ bật phần tử có fromLevel cao nhất thỏa điều kiện.
 [Serializable]
 public class LevelVisual
 {

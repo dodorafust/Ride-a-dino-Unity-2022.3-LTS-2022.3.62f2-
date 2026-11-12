@@ -11,12 +11,12 @@ public class GameManager : MonoBehaviour
     [Header("Scene")]
     public Transform respawnPoint;
 
-    [Header("Giá trị khởi đầu (để test)")]
+    [Header("Giá trị khởi đầu")]
     public double startCash = 500;
     public float startStamina = 10f;
-    public bool debugKeys = true;              // F1: +1000 cash, F2: +10 stamina
+    public bool debugKeys = true;
 
-    [Header("Prefab chữ nổi (chỉnh bằng tay trong prefab)")]
+    [Header("Prefab chữ nổi + số bay lên")]
     public WorldLabel worldLabelPrefab;
     public FloatingPopup popupPrefab;
 
@@ -68,8 +68,6 @@ public class GameManager : MonoBehaviour
         HudController.Say("Sold " + d.Title + " for $" + NumberFormat.Short(d.SellValue));
         return true;
     }
-
-    // Tạo chữ nổi bám theo target (tên Dino, bảng nâng cấp...). Trả về null nếu chưa gán prefab.
     public WorldLabel CreateLabel(Transform target, Vector3 offset, string text)
     {
         if (worldLabelPrefab == null) return null;
@@ -78,8 +76,6 @@ public class GameManager : MonoBehaviour
         l.SetText(text);
         return l;
     }
-
-    // Số bay lên (+Stamina / +$)
     public void ShowPopup(Vector3 worldPos, string text, PopupKind kind)
     {
         if (popupPrefab == null) return;

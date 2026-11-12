@@ -20,4 +20,4 @@ MonoBehaviour:
   baseMoney: 80
   requiredStamina: 800
   tameTime: 8
-  runSpeed: 14
+  runSpeed: 20

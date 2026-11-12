@@ -8,8 +8,8 @@ public class DinoData : ScriptableObject
     [Min(1)] public int zone = 1;
 
     [Header("Hiển thị")]
-    public Sprite icon;                        // icon cho hotbar / inventory (để trống = chưa có)
-    public GameObject modelPrefab;             // model 3D (để trống = dùng khối hộp greybox)
+    public Sprite icon;
+    public GameObject modelPrefab;
 
     [Header("Economy")]
     public float baseMoney = 1f;               // Money/s cơ bản

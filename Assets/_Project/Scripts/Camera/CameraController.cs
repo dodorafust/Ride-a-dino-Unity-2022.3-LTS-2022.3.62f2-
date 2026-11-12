@@ -29,7 +29,6 @@ public class CameraController : MonoBehaviour
     PlayerState lastState;
     float alignTimer;
 
-    // Gọi khi dịch chuyển người chơi (respawn) để camera không bay theo
     public void Snap()
     {
         focus = player.transform.position + lookOffset;
@@ -55,7 +54,6 @@ public class CameraController : MonoBehaviour
         }
         bool riding = state == PlayerState.Riding;
 
-        // Xoay camera: kéo ngón tay / chuột trên LookPad (LookPad gửi vào GameInput)
         Vector2 look = GameInput.ConsumeLook();
         if (look.sqrMagnitude > 0f)
         {
@@ -72,16 +70,14 @@ public class CameraController : MonoBehaviour
         }
         pitch = Mathf.Clamp(pitch, pitchLimits.x, pitchLimits.y);
 
-        // Zoom: con lăn chuột + chụm 2 ngón
         float zoom = GameInput.ConsumeZoom() + (-Input.GetAxis("Mouse ScrollWheel") * zoomSpeed * 10f);
         distance = Mathf.Clamp(distance + zoom, minDistance, maxDistance);
 
-        // Khi ngửa camera nhìn lên trời (pitch < upwardZoomStartPitch), tự động zoom lại gần nhân vật
         float upT = 0f;
         if (pitch < upwardZoomStartPitch && pitchLimits.x < upwardZoomStartPitch)
         {
             upT = Mathf.Clamp01((upwardZoomStartPitch - pitch) / (upwardZoomStartPitch - pitchLimits.x));
-            upT = upT * upT * (3f - 2f * upT); // SmoothStep mượt mà
+            upT = upT * upT * (3f - 2f * upT);
         }
 
         float baseDist = distance + (riding ? ridingExtraDistance : 0f);
@@ -96,7 +92,6 @@ public class CameraController : MonoBehaviour
         Vector3 desiredDir = -(rot * Vector3.forward);
         float finalDist = curDistance;
 
-        // Chống camera xuyên xuống mặt đất khi ngước nhìn lên trời
         if (player.groundMask.value != 0)
         {
             RaycastHit hit;

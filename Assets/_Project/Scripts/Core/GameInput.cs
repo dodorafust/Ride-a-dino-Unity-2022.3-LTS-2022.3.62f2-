@@ -1,9 +1,8 @@
 using UnityEngine;
 
-// Gom input từ cảm ứng (joystick, nút, kéo màn hình) và bàn phím/chuột (để test trên PC).
 public static class GameInput
 {
-    public static Vector2 JoystickMove;    // VirtualJoystick ghi vào
+    public static Vector2 JoystickMove;
     static Vector2 look;
     static float zoom;
     static bool jumpQueued;
