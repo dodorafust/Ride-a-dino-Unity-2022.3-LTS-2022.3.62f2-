@@ -40,6 +40,13 @@ public class HudController : MonoBehaviour
     public TMP_Text toastText;
     public GameObject depositHint;       // "GO TO YOUR PEN TO DEPOSIT"
 
+    [Header("Dev Cheat (Test Mobile)")]
+    public bool showDevCheatButtons = true;
+    public float cheatStaminaAmount = 10f;
+    public Button cheatStaminaButton;                 // tùy chọn: kéo nút tự thiết kế vào, để trống thì tự tạo
+    public Vector2 cheatButtonPos = new Vector2(24f, -150f);
+    public Vector2 cheatButtonSize = new Vector2(170f, 46f);
+
     GameManager gm;
     PlayerController player;
     RideSession ride;
@@ -97,6 +104,59 @@ public class HudController : MonoBehaviour
         RefreshStats();
         RefreshInventory();
         RefreshRideSlot();
+
+        if (cheatStaminaButton != null)
+        {
+            cheatStaminaButton.gameObject.SetActive(showDevCheatButtons);
+            if (showDevCheatButtons)
+                cheatStaminaButton.onClick.AddListener(delegate { if (gm != null) gm.AddStamina(cheatStaminaAmount); });
+        }
+        else if (showDevCheatButtons)
+        {
+            CreateDevCheatButton();
+        }
+    }
+
+    void CreateDevCheatButton()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null) canvas = FindObjectOfType<Canvas>();
+        if (canvas == null) return;
+
+        GameObject go = new GameObject("CheatStaminaButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        go.transform.SetParent(canvas.transform, false);
+
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot = new Vector2(0f, 1f);
+        rt.anchoredPosition = cheatButtonPos;
+        rt.sizeDelta = cheatButtonSize;
+
+        Image bg = go.GetComponent<Image>();
+        bg.color = new Color(0.1f, 0.1f, 0.14f, 0.78f);
+
+        GameObject txtGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        txtGo.transform.SetParent(go.transform, false);
+        RectTransform trt = txtGo.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI label = txtGo.GetComponent<TextMeshProUGUI>();
+        label.text = "+" + NumberFormat.Short(cheatStaminaAmount) + " Stamina (F2)";
+        label.fontSize = 18f;
+        label.fontStyle = FontStyles.Bold;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = new Color(1f, 0.9f, 0.25f);
+        label.raycastTarget = false;
+
+        Button btn = go.GetComponent<Button>();
+        btn.onClick.AddListener(delegate
+        {
+            if (gm != null) gm.AddStamina(cheatStaminaAmount);
+        });
     }
 
     void OnDestroy()

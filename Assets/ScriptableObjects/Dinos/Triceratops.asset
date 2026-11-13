@@ -16,7 +16,7 @@ MonoBehaviour:
   rarity: 2
   zone: 2
   icon: {fileID: 0}
-  modelPrefab: {fileID: 0}
+  modelPrefab: {fileID: 5920884724692048290, guid: 10879e17dac76ad43babac438f8293b7, type: 3}
   baseMoney: 8
   requiredStamina: 60
   tameTime: 5

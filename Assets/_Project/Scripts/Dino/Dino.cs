@@ -8,8 +8,11 @@ public class Dino : MonoBehaviour
     [Header("Movement")]
     public float baseSpeed = 6f;
     public float steerSpeed = 6f;          // A/D hoặc joystick: trượt ngang
-    public float turnSpeed = 120f;         // độ/giây khi xoay theo camera
+    public float turnSpeed = 120f;         // độ/giây khi xoay (dùng cho AI hoặc khi tắt instantCameraFollow)
+    public bool limitTurnAngle = true;     // bật/tắt giới hạn góc quay đầu khi đang cưỡi
     public float maxSteerAngle = 60f;
+    public bool instantCameraFollow = true;// true = hướng chạy trùng hướng camera ngay lập tức, không độ trễ
+    public float steerBodyTurnSpeed = 14f; // tốc độ xoay thân/đầu theo hướng kéo joystick/WASD
     public float lifeTime = 60f;
     public float despawnMargin = 10f;      // ra khỏi RunZone quá ngần này thì biến mất
 
@@ -159,7 +162,8 @@ public class Dino : MonoBehaviour
 
     public void SetHeading(float cameraYaw)
     {
-        heading = Mathf.Clamp(Mathf.DeltaAngle(laneYaw, cameraYaw), -maxSteerAngle, maxSteerAngle);
+        float delta = Mathf.DeltaAngle(laneYaw, cameraYaw);
+        heading = limitTurnAngle ? Mathf.Clamp(delta, -maxSteerAngle, maxSteerAngle) : delta;
     }
 
     public void ResetHeading() { heading = 0f; }
@@ -390,9 +394,27 @@ public class Dino : MonoBehaviour
         else wasRidden = true;
 
         Quaternion goal = Quaternion.Euler(0f, laneYaw + heading, 0f);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, goal, turnSpeed * dt);
-
-        Vector3 move = transform.forward * CurrentSpeed + transform.right * steer * steerSpeed;
+        Vector3 move;
+        if (!wild && instantCameraFollow)
+        {
+            Vector3 fwd = goal * Vector3.forward;
+            Vector3 right = goal * Vector3.right;
+            move = fwd * CurrentSpeed + right * (steer * steerSpeed);
+            if (Mathf.Abs(steer) > 0.01f && move.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(move.normalized, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, steerBodyTurnSpeed * dt);
+            }
+            else
+            {
+                transform.rotation = goal;
+            }
+        }
+        else
+        {
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, goal, turnSpeed * dt);
+            move = transform.forward * CurrentSpeed + transform.right * steer * steerSpeed;
+        }
         transform.position += move * dt;
 
         if (wild)

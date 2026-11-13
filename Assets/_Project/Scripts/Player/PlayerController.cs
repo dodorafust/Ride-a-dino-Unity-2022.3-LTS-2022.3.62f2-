@@ -1,6 +1,7 @@
+using System.Collections;
 using UnityEngine;
 
-public enum PlayerState { Walking, Jumping, Catching, Riding, Sitting }
+public enum PlayerState { Walking, Jumping, Catching, Riding, Sitting, Dead }
 public enum DeathReason { StaminaEmpty, WallHit, MissedJump, Fell }
 
 [RequireComponent(typeof(CharacterController))]
@@ -30,7 +31,11 @@ public class PlayerController : MonoBehaviour
     public float aimSwitchDegrees = 4f;            // chống nhấp nháy khi 2 con gần như thẳng hàng
     public float catchDuration = 0.18f;
     public float autoCatchHeight = 0.5f;
-    public float steerDelayAfterMount = 0.6f;
+    public float steerDelayAfterMount = 0f;
+
+    [Header("Dino Riding Steering")]
+    public bool limitDinoTurnAngle = true;         // tắt = cho phép Dino quay đầu tự do theo camera (không giới hạn góc)
+    public float dinoMaxTurnAngle = 60f;           // góc quay đầu tối đa (độ) khi bật giới hạn
 
     [Header("Throw (hết Stamina sau khi tame xong)")]
     public float throwForward = 6f;
@@ -49,6 +54,7 @@ public class PlayerController : MonoBehaviour
     public Animator animator;
     public float modelTurnSpeed = 14f;
     public Vector3 ridingModelOffset = Vector3.zero;   // chỉnh độ cao/tiến lùi của nhân vật khi ngồi trên lưng Dino
+    public float deathRespawnDelay = 1.3f;             // thời gian chờ phát animation chết trước khi về điểm spawn
 
     public PlayerState State { get; private set; } = PlayerState.Walking;
     public Dino CurrentDino { get { return currentDino; } }
@@ -74,7 +80,7 @@ public class PlayerController : MonoBehaviour
     float airGravityScale;
     bool steerWithCamera;          // true sau khi nhảy khỏi Dino / bị hất: xoay camera = bẻ hướng bay
     bool hasIsRunning, hasIsJumping, hasIsGrounded, hasIsFalling, hasVerticalSpeed,
-         hasJumpStart, hasLand, hasIsRiding, hasIsHolding, hasIsLassoing, hasJumpFromDino, hasDie;
+         hasJumpStart, hasLand, hasIsRiding, hasIsHolding, hasIsLassoing, hasJumpFromDino, hasDie, hasIsRunActive;
     readonly Collider[] hitBuf = new Collider[32];
 
     void Awake()
@@ -102,6 +108,8 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (State == PlayerState.Dead) return;
+
         jumpPressed = GameInput.ConsumeJump();
         ReadMoveInput();
         UpdateRunActive();
@@ -301,16 +309,24 @@ public class PlayerController : MonoBehaviour
     {
         Vector3 h = new Vector3(velocity.x, 0f, velocity.z);
 
-        if (steerWithCamera && airTurnRate > 0f && h.sqrMagnitude > 0.25f)
+        if (steerWithCamera)
         {
-            Vector3 want = CamForwardFlat() * h.magnitude;
-            h = Vector3.RotateTowards(h, want, airTurnRate * Mathf.Deg2Rad * dt, 0f);
-        }
+            if (airTurnRate > 0f && h.sqrMagnitude > 0.25f)
+            {
+                Vector3 want = CamForwardFlat() * h.magnitude;
+                h = Vector3.RotateTowards(h, want, airTurnRate * Mathf.Deg2Rad * dt, 0f);
+            }
 
-        float before = h.magnitude;
-        h += moveInput * airControl * dt;
-        float cap = Mathf.Max(before, steerWithCamera ? maxAirSpeed : walkSpeed * 1.25f);
-        if (h.magnitude > cap) h = h.normalized * cap;
+            float before = h.magnitude;
+            h += moveInput * airControl * dt;
+            float cap = Mathf.Max(before, maxAirSpeed);
+            if (h.magnitude > cap) h = h.normalized * cap;
+        }
+        else
+        {
+            // Nhảy từ mặt đất: tăng tốc & bẻ hướng theo joystick theo đúng airControl chỉnh trong Inspector
+            h = Vector3.MoveTowards(h, moveInput * walkSpeed, airControl * dt);
+        }
 
         velocity.x = h.x;
         velocity.z = h.z;
@@ -466,6 +482,16 @@ public class PlayerController : MonoBehaviour
         float stamina = GameManager.Instance != null ? GameManager.Instance.Stamina : 10f;
         ride.Begin(currentDino, stamina);
         State = PlayerState.Riding;
+
+        if (animator != null)
+        {
+            if (hasIsJumping) animator.SetBool("IsJumping", false);
+            if (hasIsFalling) animator.SetBool("IsFalling", false);
+            if (hasIsLassoing) animator.SetBool("IsLassoing", false);
+            if (hasIsRiding) animator.SetBool("IsRiding", true);
+            int riding = Animator.StringToHash("Base Layer.Riding");
+            if (animator.HasState(0, riding)) animator.CrossFadeInFixedTime(riding, 0.08f, 0);
+        }
     }
 
     // ---------- Riding ----------
@@ -475,6 +501,8 @@ public class PlayerController : MonoBehaviour
         if (currentDino.TouchingWall) { Die(DeathReason.WallHit); return; }
 
         currentDino.SetSteer(GameInput.Move.x);                // joystick trái/phải hoặc A/D
+        currentDino.limitTurnAngle = limitDinoTurnAngle;
+        currentDino.maxSteerAngle = dinoMaxTurnAngle;
 
         if (Time.time >= steerEnableTime)
             currentDino.SetHeading(cam.eulerAngles.y);         // xoay camera = lái hướng Dino
@@ -494,7 +522,8 @@ public class PlayerController : MonoBehaviour
 
         if (jumpPressed)
         {
-            Vector3 vel = CamForwardFlat() * (currentDino.CurrentSpeed + dinoJumpForward)
+            // Bỏ quán tính tốc độ/boost của Dino để nhảy chuyền luôn ổn định
+            Vector3 vel = CamForwardFlat() * (walkSpeed + dinoJumpForward)
                         + Vector3.up * dinoJumpUp;
             ReleaseDino();
             if (animator != null && hasJumpFromDino) animator.SetTrigger("JumpFromDino");
@@ -517,7 +546,7 @@ public class PlayerController : MonoBehaviour
 
     void ThrowFromDino()
     {
-        Vector3 vel = currentDino.transform.forward * (currentDino.CurrentSpeed + throwForward)
+        Vector3 vel = currentDino.transform.forward * (currentDino.baseSpeed + throwForward)
                     + Vector3.up * throwUp;
         ReleaseDino();
         if (animator != null && hasJumpFromDino) animator.SetTrigger("JumpFromDino");
@@ -551,6 +580,8 @@ public class PlayerController : MonoBehaviour
 
     void Die(DeathReason reason)
     {
+        if (State == PlayerState.Dead) return;
+
         if (currentDino != null) ReleaseDino();
         ride.End();
         SetTarget(null);
@@ -563,13 +594,22 @@ public class PlayerController : MonoBehaviour
             machine = null;
         }
 
-        TeleportTo(RespawnPos());
-        if (animator != null && hasDie) animator.SetTrigger("Die");
         diesOnGround = false;
         lastDino = null;
         catchLockUntil = 0f;
-        State = PlayerState.Walking;
-        ResetAnimatorToIdle();
+        velocity = Vector3.zero;
+        SetBodyActive(false);
+        State = PlayerState.Dead;
+
+        if (animator != null)
+        {
+            if (hasIsJumping) animator.SetBool("IsJumping", false);
+            if (hasIsFalling) animator.SetBool("IsFalling", false);
+            if (hasIsRunning) animator.SetBool("IsRunning", false);
+            if (hasIsRiding) animator.SetBool("IsRiding", false);
+            if (hasIsLassoing) animator.SetBool("IsLassoing", false);
+            if (hasDie) animator.SetTrigger("Die");
+        }
 
         string msg;
         switch (reason)
@@ -580,6 +620,17 @@ public class PlayerController : MonoBehaviour
             default: msg = "You missed the jump and fell!"; break;
         }
         HudController.Say(msg, 3f);
+
+        StartCoroutine(RespawnAfterDeathRoutine());
+    }
+
+    IEnumerator RespawnAfterDeathRoutine()
+    {
+        yield return new WaitForSeconds(deathRespawnDelay);
+        TeleportTo(RespawnPos());
+        SetBodyActive(true);
+        State = PlayerState.Walking;
+        ResetAnimatorToIdle();
     }
 
     // ---------- Dino Machine ----------
@@ -621,11 +672,14 @@ public class PlayerController : MonoBehaviour
         if (hasIsJumping) animator.SetBool("IsJumping", false);
         if (hasIsFalling) animator.SetBool("IsFalling", false);
         if (hasIsRunning) animator.SetBool("IsRunning", false);
+        if (hasIsRiding) animator.SetBool("IsRiding", false);
+        if (hasIsLassoing) animator.SetBool("IsLassoing", false);
         if (hasIsGrounded) animator.SetBool("IsGrounded", true);
         if (hasVerticalSpeed) animator.SetFloat("VerticalSpeed", 0f);
         if (hasJumpStart) animator.ResetTrigger("JumpStart");
         if (hasLand) animator.ResetTrigger("Land");
         if (hasJumpFromDino) animator.ResetTrigger("JumpFromDino");
+        if (hasDie) animator.ResetTrigger("Die");
         int idle = Animator.StringToHash("Base Layer.Breathing Idle");
         if (animator.HasState(0, idle)) animator.Play(idle, 0, 0f);
     }
@@ -650,6 +704,7 @@ public class PlayerController : MonoBehaviour
                 case "IsLassoing": hasIsLassoing = true; break;
                 case "JumpFromDino": hasJumpFromDino = true; break;
                 case "Die": hasDie = true; break;
+                case "IsRunActive": hasIsRunActive = true; break;
             }
         }
     }
@@ -685,8 +740,7 @@ public class PlayerController : MonoBehaviour
         bool isGrounded = State == PlayerState.Walking || State == PlayerState.Riding || State == PlayerState.Sitting;
         bool isFalling = State == PlayerState.Jumping && velocity.y <= 1.0f;
         bool isHolding = GameManager.Instance != null && GameManager.Instance.Inventory.Held != null && !ridingOrSitting;
-        bool isLassoing = (State == PlayerState.Riding && !ride.Tamed) ||
-                          (RunActive && !ridingOrSitting && targetDino != null);
+        bool isLassoing = State == PlayerState.Catching;
 
         if (hasIsRunning) animator.SetBool("IsRunning", isRunning);
         if (hasIsJumping) animator.SetBool("IsJumping", isJumping);
@@ -696,5 +750,6 @@ public class PlayerController : MonoBehaviour
         if (hasIsRiding) animator.SetBool("IsRiding", ridingOrSitting);
         if (hasIsHolding) animator.SetBool("IsHolding", isHolding);
         if (hasIsLassoing) animator.SetBool("IsLassoing", isLassoing);
+        if (hasIsRunActive) animator.SetBool("IsRunActive", RunActive);
     }
 }
