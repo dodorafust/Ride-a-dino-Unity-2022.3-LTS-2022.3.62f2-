@@ -11,7 +11,7 @@ public class CameraRig : MonoBehaviour
 
     [Header("Tốc độ xoay")]
     public float rotateSpeed = 1f;                  // nhân thêm với "Degrees Per Pixel" của LookPad
-    public float rotateSmoothing = 0.05f;           // 0 = tức thì, lớn hơn = mượt hơn nhưng trễ hơn
+    public float rotateSmoothing = 0.08f;           // 0 = tức thì, lớn hơn = mượt hơn nhưng trễ hơn
     public Vector2 pitchLimits = new Vector2(-35f, 75f);
 
     [Header("Zoom")]
@@ -88,7 +88,8 @@ public class CameraRig : MonoBehaviour
         }
         targetPitch = Mathf.Clamp(targetPitch, pitchLimits.x, pitchLimits.y);
 
-        float k = rotateSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-dt / rotateSmoothing);
+        float udt = Time.unscaledDeltaTime;
+        float k = rotateSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-udt / rotateSmoothing);
         yaw = Mathf.LerpAngle(yaw, targetYaw, k);
         pitch = Mathf.Lerp(pitch, targetPitch, k);
         cameraTarget.rotation = Quaternion.Euler(pitch, yaw, 0f);

@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 // Gắn lên Image trong suốt phủ toàn màn hình, đặt DƯỚI cùng trong Canvas (các nút khác nằm trên nó).
 public class LookPad : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
-    public float degreesPerPixel = 0.12f;
+    public float degreesPerInch = 75f;             // số độ xoay mỗi 1 inch (2.54cm) vuốt tay, đồng nhất giữa tablet và mobile
     public float pinchSensitivity = 0.02f;
     public float tapMaxMovePixels = 24f;
     public float tapMaxSeconds = 0.35f;
@@ -15,12 +15,14 @@ public class LookPad : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
     Vector2 downPos;
     float downTime;
     bool maybeTap;
+    bool skipNextDelta;
     float lastPinch;
 
     void OnDisable()
     {
         pointers.Clear();
         maybeTap = false;
+        skipNextDelta = false;
         lastPinch = 0f;
     }
 
@@ -32,17 +34,21 @@ public class LookPad : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
             downPos = e.position;
             downTime = Time.unscaledTime;
             maybeTap = true;
+            skipNextDelta = false;
         }
         else
         {
             maybeTap = false;
+            skipNextDelta = true;
             lastPinch = PinchDistance();
         }
     }
 
     public void OnDrag(PointerEventData e)
     {
-        if (!pointers.ContainsKey(e.pointerId)) return;
+        Vector2 prevPos;
+        if (!pointers.TryGetValue(e.pointerId, out prevPos)) return;
+        Vector2 delta = e.position - prevPos;
         pointers[e.pointerId] = e.position;
 
         if (pointers.Count >= 2)
@@ -50,11 +56,25 @@ public class LookPad : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
             float d = PinchDistance();
             if (lastPinch > 0f) GameInput.AddZoom(-(d - lastPinch) * pinchSensitivity);
             lastPinch = d;
+            skipNextDelta = true;
             return;
         }
 
-        if ((e.position - downPos).magnitude > tapMaxMovePixels) maybeTap = false;
-        GameInput.AddLook(e.delta * degreesPerPixel);
+        if (skipNextDelta)
+        {
+            skipNextDelta = false;
+            return;
+        }
+
+        if (maybeTap && (e.position - downPos).magnitude > tapMaxMovePixels)
+        {
+            maybeTap = false;
+            return; // bỏ qua cú nhảy pixelDragThreshold ở frame đầu tiên
+        }
+
+        float dpi = Screen.dpi > 0f ? Screen.dpi : 160f;
+        float scale = degreesPerInch / dpi;
+        GameInput.AddLook(delta * scale);
     }
 
     public void OnPointerUp(PointerEventData e)

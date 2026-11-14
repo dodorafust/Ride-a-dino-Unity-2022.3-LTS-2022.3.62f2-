@@ -130,14 +130,32 @@ MonoBehaviour:
   baseSpeed: 10
   steerSpeed: 10
   turnSpeed: 120
+  limitTurnAngle: 1
   maxSteerAngle: 60
-  maxX: 9
-  laneEndZ: 300
+  instantCameraFollow: 1
+  steerBodyTurnSpeed: 14
   lifeTime: 40
+  despawnMargin: 10
   boostMultiplier: 2
   boostDuration: 3
+  bodyCenter: {x: 0, y: 1, z: 0}
+  bodyHalfExtents: {x: 0.9, y: 0.9, z: 1.9}
   seat: {fileID: 4964642189547423015}
-  highlightColor: {r: 1, g: 0.9, b: 0.2, a: 1}
+  labelOffset: {x: 0, y: 3.8, z: 0}
+  highlightColor: {r: 1, g: 1, b: 0, a: 1}
+  highlightBrightness: 2
+  highlightEmission: 1
+  highlightColorBlend: 0.75
+  aiLookAhead: 10
+  aiProbeRadius: 1.1
+  aiMaxOffset: 45
+  aiTurnRate: 70
+  aiSideProbe: 3.5
+  aiEdgeMargin: 3
+  aiWanderAngle: 7
+  aiSenseInterval: 0.1
+  aiSeparationRadius: 3.2
+  aiSeparationSpeed: 3
 --- !u!1 &5537471857537335183
 GameObject:
   m_ObjectHideFlags: 0

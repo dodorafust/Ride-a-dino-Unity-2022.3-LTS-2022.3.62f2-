@@ -26,8 +26,13 @@ public class Dino : MonoBehaviour
 
     [Header("References")]
     public Transform seat;
-    public Color highlightColor = new Color(1f, 0.9f, 0.2f);
     public Vector3 labelOffset = new Vector3(0f, 3.8f, 0f);
+
+    [Header("Highlight khi được target")]
+    public Color highlightColor = new Color(1f, 0.9f, 0.2f);
+    [Min(0f)] public float highlightBrightness = 1.6f;     // độ sáng màu cơ thể khi target
+    [Min(0f)] public float highlightEmission = 1.5f;       // cường độ phát sáng Emission
+    [Range(0f, 1f)] public float highlightColorBlend = 0.75f; // mức pha màu highlight vào màu gốc
 
     [Header("AI Dino hoang dã (khi chưa bị cưỡi)")]
     public float aiLookAhead = 10f;        // tầm nhìn phía trước (m)
@@ -54,6 +59,8 @@ public class Dino : MonoBehaviour
     RunZone runZone;
 
     readonly List<Renderer> rends = new List<Renderer>();
+    readonly List<Material[]> origMaterials = new List<Material[]>();
+    static Material sharedHighlightMat;
     MaterialPropertyBlock mpb;
     bool hasBaseTint;
     Color baseTint;
@@ -120,9 +127,14 @@ public class Dino : MonoBehaviour
         }
 
         rends.Clear();
+        origMaterials.Clear();
         Renderer[] all = visual.GetComponentsInChildren<Renderer>();
         for (int i = 0; i < all.Length; i++)
-            if (!(all[i] is ParticleSystemRenderer)) rends.Add(all[i]);
+        {
+            if (all[i] is ParticleSystemRenderer) continue;
+            rends.Add(all[i]);
+            origMaterials.Add(all[i].sharedMaterials);
+        }
 
         hasBaseTint = DinoView.TryGetTint(owned, owned.data.modelPrefab == null, out baseTint);
 
@@ -146,16 +158,61 @@ public class Dino : MonoBehaviour
     {
         mpb.SetColor("_Color", c);
         mpb.SetColor("_BaseColor", c);
-        for (int i = 0; i < rends.Count; i++) rends[i].SetPropertyBlock(mpb);
+        for (int i = 0; i < rends.Count; i++)
+        {
+            if (rends[i] != null) rends[i].SetPropertyBlock(mpb);
+        }
+    }
+
+    Material GetHighlightMaterial()
+    {
+        if (sharedHighlightMat == null)
+        {
+            Shader sh = Shader.Find("Standard");
+            if (sh == null) sh = Shader.Find("Unlit/Color");
+            sharedHighlightMat = new Material(sh);
+            sharedHighlightMat.SetFloat("_Glossiness", 0f);
+            sharedHighlightMat.SetFloat("_Metallic", 0f);
+            sharedHighlightMat.EnableKeyword("_EMISSION");
+        }
+
+        Color glow = highlightColor * Mathf.Max(0.5f, highlightBrightness + highlightEmission);
+        sharedHighlightMat.color = glow;
+        sharedHighlightMat.SetColor("_Color", Color.black);
+        sharedHighlightMat.SetColor("_EmissionColor", glow);
+        return sharedHighlightMat;
     }
 
     public void SetHighlight(bool on)
     {
         if (highlighted == on) return;
         highlighted = on;
-        if (on) ApplyTint(highlightColor);
-        else if (hasBaseTint) ApplyTint(baseTint);
-        else for (int i = 0; i < rends.Count; i++) rends[i].SetPropertyBlock(null);
+
+        if (on)
+        {
+            Material hMat = GetHighlightMaterial();
+            for (int i = 0; i < rends.Count; i++)
+            {
+                Renderer r = rends[i];
+                if (r == null) continue;
+                r.SetPropertyBlock(null);
+                int count = Mathf.Max(1, origMaterials[i].Length);
+                Material[] mats = new Material[count];
+                for (int m = 0; m < count; m++) mats[m] = hMat;
+                r.sharedMaterials = mats;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < rends.Count; i++)
+            {
+                Renderer r = rends[i];
+                if (r == null) continue;
+                r.sharedMaterials = origMaterials[i];
+                if (!hasBaseTint) r.SetPropertyBlock(null);
+            }
+            if (hasBaseTint) ApplyTint(baseTint);
+        }
     }
 
     public void SetSteer(float s) { steer = s; }

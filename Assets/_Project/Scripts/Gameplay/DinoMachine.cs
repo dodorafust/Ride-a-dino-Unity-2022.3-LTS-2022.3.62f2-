@@ -1,9 +1,19 @@
 using System;
 using UnityEngine;
 
-// Thú nhún: chạm để ngồi, tự cộng Stamina mỗi nửa giây (số +Stamina bay lên), đung đưa trước-sau như lò xo.
+[Serializable]
+public class MachineLevelConfig
+{
+    public GameObject model;               // model hiển thị ở level này
+    public GameObject vfx;                 // VFX bật liên tục ở level này (tùy chọn)
+    public ParticleSystem upgradeBurstVfx; // VFX nổ 1 lần ngay khi vừa nâng lên level này (tùy chọn)
+    public float staminaPerSecond = 1f;    // lượng Stamina cộng mỗi giây ở level này
+    public double upgradeCost = 100;       // giá tiền để nâng cấp LÊN level này (Lv 1 để 0)
+}
+
+// Thú nhún: đi lại chạm vào máy để nhảy lên ngồi, tự cộng Stamina mỗi nửa giây (số +Stamina bay lên), đung đưa trước-sau như lò xo.
 // Đứng dậy: nút Jump hoặc di chuyển. Có nâng cấp giống chuồng (bảng UpgradeSign riêng).
-public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
+public class DinoMachine : MonoBehaviour, IUpgradable
 {
     [Header("Bộ phận")]
     public Transform seat;                     // chỗ ngồi (con của spring)
@@ -20,7 +30,10 @@ public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
     public float rampUpTime = 0.8f;
     public float decayTime = 1.5f;             // dừng dần sau khi đứng dậy
 
-    [Header("Level")]
+    [Header("Cấu hình chi tiết từng Level (ưu tiên dùng nếu có phần tử)")]
+    public MachineLevelConfig[] levels;
+
+    [Header("Level (dự phòng khi chưa điền danh sách Levels ở trên)")]
     public int level = 1;
     public int maxLevel = 10;
     public double baseUpgradeCost = 100;
@@ -31,8 +44,22 @@ public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
     public float interactRange = 8f;
     public Vector3 labelOffset = new Vector3(0f, 4.2f, 0f);
 
+    bool HasLevelTable { get { return levels != null && levels.Length > 0; } }
+    int EffectiveMaxLevel { get { return HasLevelTable ? levels.Length : maxLevel; } }
+
     public bool Occupied { get; private set; }
-    public float StaminaPerSecond { get { return baseStaminaPerSecond * level; } }
+    public float StaminaPerSecond
+    {
+        get
+        {
+            if (HasLevelTable)
+            {
+                int idx = Mathf.Clamp(level - 1, 0, levels.Length - 1);
+                return levels[idx] != null ? levels[idx].staminaPerSecond : baseStaminaPerSecond * level;
+            }
+            return baseStaminaPerSecond * level;
+        }
+    }
     public Vector3 ExitPosition
     {
         get { return exitPoint != null ? exitPoint.position : transform.position + new Vector3(0f, 1f, 3.5f); }
@@ -41,9 +68,31 @@ public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
     // ---- IUpgradable
     public string UpgradeName { get { return "MACHINE"; } }
     public int Level { get { return level; } }
-    public bool IsMaxLevel { get { return level >= maxLevel; } }
-    public double UpgradeCost { get { return baseUpgradeCost * Math.Pow(upgradeCostMultiplier, level - 1); } }
-    public string NextLevelInfo { get { return "+" + NumberFormat.Small(baseStaminaPerSecond) + " Stamina/s"; } }
+    public bool IsMaxLevel { get { return level >= EffectiveMaxLevel; } }
+    public double UpgradeCost
+    {
+        get
+        {
+            if (HasLevelTable)
+            {
+                if (level >= levels.Length) return 0;
+                return levels[level] != null ? levels[level].upgradeCost : 0;
+            }
+            return baseUpgradeCost * Math.Pow(upgradeCostMultiplier, level - 1);
+        }
+    }
+    public string NextLevelInfo
+    {
+        get
+        {
+            if (HasLevelTable && level < levels.Length && levels[level] != null)
+            {
+                float diff = levels[level].staminaPerSecond - StaminaPerSecond;
+                return "+" + NumberFormat.Small(diff) + " Stamina/s (" + NumberFormat.Small(levels[level].staminaPerSecond) + "/s)";
+            }
+            return "+" + NumberFormat.Small(baseStaminaPerSecond) + " Stamina/s";
+        }
+    }
     public event Action Changed;
 
     float amp, tickTimer;
@@ -55,21 +104,63 @@ public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
         if (spring != null) springRest = spring.localRotation;
         if (GameManager.Instance != null)
             label = GameManager.Instance.CreateLabel(transform, labelOffset, "");
-        LevelVisual.Apply(levelVisuals, level);
+        ApplyCurrentLevelVisuals(false);
         RefreshLabel();
+    }
+
+    void ApplyCurrentLevelVisuals(bool playBurst)
+    {
+        LevelVisual.Apply(levelVisuals, level);
+        if (!HasLevelTable) return;
+
+        int activeIdx = Mathf.Clamp(level - 1, 0, levels.Length - 1);
+        MachineLevelConfig active = levels[activeIdx];
+        GameObject activeModel = active != null ? active.model : null;
+        GameObject activeVfx = active != null ? active.vfx : null;
+
+        for (int i = 0; i < levels.Length; i++)
+        {
+            if (levels[i] == null) continue;
+            GameObject m = levels[i].model;
+            if (m != null && m != activeModel && m != gameObject && !transform.IsChildOf(m.transform))
+                m.SetActive(false);
+            GameObject v = levels[i].vfx;
+            if (v != null && v != activeVfx && v != gameObject && !transform.IsChildOf(v.transform))
+                v.SetActive(false);
+        }
+
+        if (activeModel != null) activeModel.SetActive(true);
+        if (activeVfx != null) activeVfx.SetActive(true);
+        if (playBurst && active != null && active.upgradeBurstVfx != null)
+            active.upgradeBurstVfx.Play();
     }
 
     void RefreshLabel()
     {
         if (label == null) return;
         label.SetText("DINO MACHINE  Lv " + level + "\n<color=#FFE633>+" + NumberFormat.Small(StaminaPerSecond) +
-                      " Stamina/s</color>\nTap to sit");
+                      " Stamina/s</color>\nTouch to ride");
     }
+
+    float nextEnterTime;
 
     public void SetOccupied(bool v)
     {
+        if (Occupied && !v) nextEnterTime = Time.time + 0.8f;
         Occupied = v;
         tickTimer = 0f;
+    }
+
+    public bool TryTouchMount(PlayerController player)
+    {
+        if (Occupied || player == null || Time.time < nextEnterTime) return false;
+        return player.SitOn(this);
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        PlayerController player = other.GetComponentInParent<PlayerController>();
+        if (player != null) TryTouchMount(player);
     }
 
     void Update()
@@ -101,16 +192,7 @@ public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
         }
     }
 
-    public void OnClicked(PlayerController player)
-    {
-        if (Occupied) return;
-        if (Vector3.Distance(player.transform.position, transform.position) > interactRange)
-        {
-            HudController.Say("Get closer to the machine");
-            return;
-        }
-        if (player.SitOn(this)) SetOccupied(true);
-    }
+    // Không còn dùng click để ngồi; kích hoạt khi cơ thể Player chạm vào máy (TryTouchMount / OnTriggerEnter)
 
     public void TryUpgrade()
     {
@@ -121,7 +203,7 @@ public class DinoMachine : MonoBehaviour, IClickable, IUpgradable
             return;
         }
         level++;
-        LevelVisual.Apply(levelVisuals, level);
+        ApplyCurrentLevelVisuals(true);
         RefreshLabel();
         HudController.Say("Machine upgraded to Lv " + level + "  (+" + NumberFormat.Small(StaminaPerSecond) + " Stamina/s)");
         if (Changed != null) Changed();

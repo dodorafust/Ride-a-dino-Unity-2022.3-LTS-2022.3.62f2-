@@ -9,16 +9,19 @@ public class CatchPreview : MonoBehaviour
     public float spinSpeed = 80f;
     public float followSpeed = 16f;
     public Color color = new Color(1f, 0.92f, 0.1f, 1f);
+    public Color ropeColor = new Color(0.72f, 0.52f, 0.30f, 1f);
 
     Transform ring, target, ropeFrom, ropeTo;
     LineRenderer rope;
-    bool shown;
+    bool shown, projectToGround;
+    int groundMask;
 
     void Awake()
     {
         Shader sh = Shader.Find("Sprites/Default");
         if (sh == null) sh = Shader.Find("Standard");
-        var mat = new Material(sh) { color = color };
+        var ringMat = new Material(sh) { color = color };
+        var ropeMat = new Material(sh) { color = ropeColor };
 
         ring = new GameObject("Ring").transform;
         ring.SetParent(transform, false);
@@ -35,7 +38,7 @@ public class CatchPreview : MonoBehaviour
             dash.transform.localScale = new Vector3(dashWidth, 0.04f, dashLength);
 
             var mr = dash.GetComponent<MeshRenderer>();
-            mr.sharedMaterial = mat;
+            mr.sharedMaterial = ringMat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
         }
@@ -44,26 +47,40 @@ public class CatchPreview : MonoBehaviour
         rope = gameObject.AddComponent<LineRenderer>();
         rope.positionCount = 2;
         rope.startWidth = rope.endWidth = 0.12f;
-        rope.sharedMaterial = mat;
-        rope.startColor = rope.endColor = color;
+        rope.sharedMaterial = ropeMat;
+        rope.startColor = rope.endColor = ropeColor;
         rope.enabled = false;
     }
 
-    public void Show(Transform t, Vector3 startPos)
+    public void Show(Transform t, Vector3 startPos, bool followGroundUnderTarget = false, int mask = 0)
     {
         target = t;
+        projectToGround = followGroundUnderTarget;
+        groundMask = mask;
         if (!shown)
         {
             shown = true;
-            ring.position = startPos;
+            ring.position = GoalFor(startPos);
             ring.gameObject.SetActive(true);
         }
+    }
+
+    Vector3 GoalFor(Vector3 pos)
+    {
+        if (projectToGround && groundMask != 0 &&
+            Physics.Raycast(pos + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 50f,
+                            groundMask, QueryTriggerInteraction.Ignore))
+        {
+            return new Vector3(pos.x, hit.point.y + 0.06f, pos.z);
+        }
+        return pos + Vector3.up * 0.06f;
     }
 
     public void Hide()
     {
         target = null;
         shown = false;
+        projectToGround = false;
         ring.gameObject.SetActive(false);
     }
 
@@ -77,7 +94,7 @@ public class CatchPreview : MonoBehaviour
     {
         if (shown && target != null)
         {
-            Vector3 goal = target.position + Vector3.up * 0.06f;
+            Vector3 goal = GoalFor(target.position);
             ring.position = Vector3.Lerp(ring.position, goal,
                                          1f - Mathf.Exp(-followSpeed * Time.deltaTime));
             ring.Rotate(0f, spinSpeed * Time.deltaTime, 0f, Space.World);
