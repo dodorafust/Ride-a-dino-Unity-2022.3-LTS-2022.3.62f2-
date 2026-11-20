@@ -7,6 +7,8 @@ using UnityEngine.UI;
 // Gắn lên chính panel; nút bên phải màn hình (PenButton) bật/tắt bằng Toggle(), không cần đứng trong chuồng.
 public class PenPanel : MonoBehaviour
 {
+    public static PenPanel Instance { get; private set; }
+
     public RectTransform content;            // nơi sinh các dòng (có VerticalLayoutGroup)
     public PenRowUI rowPrefab;
     public TMP_Text headerText;
@@ -15,18 +17,34 @@ public class PenPanel : MonoBehaviour
     public Button collectButton;
     public Button closeButton;
 
+    [Header("Hiệu ứng mở Popup")]
+    public float openBounceDuration = 0.28f;
+
     Pen pen;
     GameManager gm;
     MountController mount;
     bool subscribed;
+    Coroutine popRoutine;
 
     public bool Visible { get { return gameObject.activeSelf; } }
 
-    public void Toggle() { gameObject.SetActive(!gameObject.activeSelf); }
+    public void Toggle()
+    {
+        bool open = !gameObject.activeSelf;
+        if (open)
+        {
+            if (InventoryPopup.Instance != null) InventoryPopup.Instance.Hide();
+            if (SellDinosPopup.Instance != null) SellDinosPopup.Instance.Hide();
+        }
+        gameObject.SetActive(open);
+        if (open)
+            popRoutine = UIEffectUtil.PlaySpringPop(this, transform as RectTransform, popRoutine, openBounceDuration);
+    }
     public void Hide() { gameObject.SetActive(false); }
 
     void Awake()
     {
+        Instance = this;
         if (equipBestButton != null) equipBestButton.onClick.AddListener(delegate { if (pen != null) pen.EquipBest(); });
         if (collectButton != null) collectButton.onClick.AddListener(delegate { if (pen != null) pen.Collect(true); });
         if (closeButton != null) closeButton.onClick.AddListener(Hide);
@@ -84,6 +102,7 @@ public class PenPanel : MonoBehaviour
 
         if (headerText != null) headerText.text = pen.Active.Count + "/" + pen.Slots + " Active";
         if (storedText != null) storedText.text = gm.Inventory.Items.Count + " stored";
+        if (collectButton != null) collectButton.gameObject.SetActive(!pen.autoDeposit);
 
         var list = new List<OwnedDino>(pen.Active);
         list.Sort((a, b) => b.MoneyPerSecond.CompareTo(a.MoneyPerSecond));

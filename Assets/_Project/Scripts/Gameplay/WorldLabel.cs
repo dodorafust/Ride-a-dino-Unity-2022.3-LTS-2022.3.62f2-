@@ -10,7 +10,7 @@ public class WorldLabel : MonoBehaviour
     public float sizePerMeter = 0.05f;
     public float minScale = 0.6f;
     public float maxScale = 2.5f;
-    public float maxDistance = 45f;
+    public float maxDistance = 30f;
     public bool hidden;
 
     Transform target;
@@ -34,6 +34,11 @@ public class WorldLabel : MonoBehaviour
         offset = worldOffset;
     }
 
+    public void SetOffset(Vector3 worldOffset)
+    {
+        offset = worldOffset;
+    }
+
     public void SetText(string s)
     {
         if (tmp == null) tmp = GetComponent<TextMeshPro>();
@@ -47,14 +52,15 @@ public class WorldLabel : MonoBehaviour
         if (cam == null) return;
 
         Vector3 pos = target.position + offset;
+        float distSqr = (cam.transform.position - pos).sqrMagnitude;
+        bool visible = !hidden && distSqr < maxDistance * maxDistance;
+        if (tmp.enabled != visible) tmp.enabled = visible;
+        if (!visible) return;
+
         transform.position = pos;
         transform.rotation = cam.transform.rotation;
 
-        float dist = Vector3.Distance(cam.transform.position, pos);
-        bool visible = !hidden && dist < maxDistance;
-        if (tmp.enabled != visible) tmp.enabled = visible;
-
         if (constantScreenSize)
-            transform.localScale = Vector3.one * Mathf.Clamp(dist * sizePerMeter, minScale, maxScale);
+            transform.localScale = Vector3.one * Mathf.Clamp(Mathf.Sqrt(distSqr) * sizePerMeter, minScale, maxScale);
     }
 }

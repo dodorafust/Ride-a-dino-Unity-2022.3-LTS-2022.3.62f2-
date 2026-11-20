@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a65dab511e384d988eda30e8a114b, type: 3}
+  m_Name: Parasaurolophus
+  m_EditorClassIdentifier: 
+  displayName: Parasaurolophus
+  rarity: 2
+  size: 3
+  diet: 0
+  zone: 2
+  icon: {fileID: 0}
+  modelPrefab: {fileID: 5967277115537408355, guid: 13cc8697f561aca4a8245e13bb2f6984, type: 3}
+  animatorController: {fileID: 22100000, guid: 6eee59fde978aec4282e3f6b71d76653, type: 2}
+  modelScale: 1.5
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.4, z: 0}
+  seatSizeScaleWeight: 0.5
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
+  baseMoney: 3
+  requiredStamina: 250
+  tameTime: 5
+  runSpeed: 18
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  maxAliveOnTrack: 3
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 1.4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 1.6}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0

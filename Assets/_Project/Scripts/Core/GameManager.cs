@@ -15,6 +15,8 @@ public class GameManager : MonoBehaviour
     public double startCash = 500;
     public float startStamina = 10f;
     public bool debugKeys = true;
+    [Tooltip("Tùy chọn: gán 4 DinoData tương ứng phím F3 (Small), F4 (Medium), F5 (Large), F6 (Giant) để test vào ô Q.")]
+    public DinoData[] debugMountDinos = new DinoData[4];
 
     [Header("Prefab chữ nổi + số bay lên")]
     public WorldLabel worldLabelPrefab;
@@ -38,6 +40,10 @@ public class GameManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+#if UNITY_ANDROID || UNITY_IOS
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = 60;
+#endif
         Inventory = new Inventory();
         Cash = startCash;
         Stamina = startStamina;
@@ -46,8 +52,52 @@ public class GameManager : MonoBehaviour
     void Update()
     {
         if (!debugKeys) return;
-        if (Input.GetKeyDown(KeyCode.F1)) AddCash(1000);
-        if (Input.GetKeyDown(KeyCode.F2)) AddStamina(10f);
+        double cashAmt = HudController.Instance != null ? HudController.Instance.cheatCashAmount : 1000;
+        float stamAmt = HudController.Instance != null ? HudController.Instance.cheatStaminaAmount : 10f;
+        if (Input.GetKeyDown(KeyCode.F1)) AddCash(cashAmt);
+        if (Input.GetKeyDown(KeyCode.F2)) AddStamina(stamAmt);
+        if (Input.GetKeyDown(KeyCode.F3)) DebugMountBySize(ObjectSize.Small);
+        if (Input.GetKeyDown(KeyCode.F4)) DebugMountBySize(ObjectSize.Medium);
+        if (Input.GetKeyDown(KeyCode.F5)) DebugMountBySize(ObjectSize.Large);
+        if (Input.GetKeyDown(KeyCode.F6)) DebugMountBySize(ObjectSize.Giant);
+    }
+
+    public void DebugMountBySize(ObjectSize targetSize)
+    {
+        MountController mount = MountController.Instance;
+        if (mount == null) return;
+
+        int idx = (int)targetSize;
+        DinoData chosen = (debugMountDinos != null && idx < debugMountDinos.Length) ? debugMountDinos[idx] : null;
+        if (chosen == null)
+        {
+            DinoData[] loaded = Resources.FindObjectsOfTypeAll<DinoData>();
+            for (int i = 0; i < loaded.Length; i++)
+            {
+                if (loaded[i] != null && DinoSizeModifiers.ToObjectSize(loaded[i].modelScale) == targetSize)
+                {
+                    chosen = loaded[i];
+                    break;
+                }
+            }
+            if (chosen == null && loaded.Length > 0) chosen = loaded[0];
+        }
+
+        if (chosen == null)
+        {
+            chosen = ScriptableObject.CreateInstance<DinoData>();
+            chosen.displayName = targetSize + " Dino";
+            chosen.modelScale = 0.6f + idx * 0.45f;
+            chosen.runSpeed = 8f + idx * 3f;
+        }
+
+        DinoSizeType debugSizeType = DinoSizeType.Normal;
+        if (targetSize == ObjectSize.Small) debugSizeType = DinoSizeType.Tiny;
+        else if (targetSize == ObjectSize.Large) debugSizeType = DinoSizeType.Huge;
+        else if (targetSize == ObjectSize.Giant) debugSizeType = DinoSizeType.Colossal;
+
+        mount.DebugSetSlotAndRide(new OwnedDino(chosen, null, DinoTrait.None, debugSizeType));
+        HudController.Say("Slot Q: " + chosen.displayName + " (" + targetSize + ")", 1.5f);
     }
 
     public void AddCash(double amount) { Cash += amount; Fire(); }

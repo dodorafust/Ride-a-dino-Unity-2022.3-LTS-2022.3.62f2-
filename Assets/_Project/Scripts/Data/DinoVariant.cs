@@ -8,6 +8,18 @@ public class DinoVariant : ScriptableObject
     public string displayName = "Normal";
     public bool isNormal = true;               // true: không thêm tiền tố vào tên Dino
     public float moneyMultiplier = 1f;
+    [Tooltip("Hệ số nhân Stamina cần để tame (0 = tự động tăng theo độ hiếm/Money Multiplier).")]
+    [Min(0f)] public float staminaMultiplier = 0f;
+
+    public float EffectiveStaminaMultiplier
+    {
+        get
+        {
+            if (staminaMultiplier > 0f) return staminaMultiplier;
+            if (isNormal || moneyMultiplier <= 1f) return 1f;
+            return 1f + (moneyMultiplier - 1f) * 0.5f;
+        }
+    }
 
     [Header("Giao diện")]
     public bool useTint;                       // nhuộm màu model

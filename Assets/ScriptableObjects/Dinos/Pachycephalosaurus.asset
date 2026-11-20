@@ -14,10 +14,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: Pachycephalosaurus
   rarity: 2
+  size: 2
+  diet: 0
   zone: 2
   icon: {fileID: 0}
-  modelPrefab: {fileID: 5920884724692048290, guid: 10879e17dac76ad43babac438f8293b7, type: 3}
+  modelPrefab: {fileID: 3035651538186958168, guid: 220573db5a10b434bb2ca3cfe70da62d, type: 3}
+  animatorController: {fileID: 22100000, guid: 1ce95451acca12b44b9f1ed0b09c5507, type: 2}
+  modelScale: 1.3
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.1, z: -0.3}
+  seatSizeScaleWeight: 0.45
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
   baseMoney: 6
   requiredStamina: 40
   tameTime: 5
-  runSpeed: 15
+  runSpeed: 28
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  maxAliveOnTrack: 5
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 1.4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 1.6}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0

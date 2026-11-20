@@ -14,10 +14,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: Dodo
   rarity: 0
+  size: 0
+  diet: 0
   zone: 1
   icon: {fileID: 0}
-  modelPrefab: {fileID: 5920884724692048290, guid: 10879e17dac76ad43babac438f8293b7, type: 3}
+  modelPrefab: {fileID: 5793687580842246492, guid: d8b2e3071586869469c603eb1511f4ac, type: 3}
+  animatorController: {fileID: 22100000, guid: 9f2387e9962b12442b1254f75bd1092f, type: 2}
+  modelScale: 0.7
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.8, z: 0}
+  seatSizeScaleWeight: 0.35
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
   baseMoney: 1
   requiredStamina: 5
   tameTime: 4
   runSpeed: 15
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  maxAliveOnTrack: 10
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 1.4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 1.6}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0

@@ -127,25 +127,56 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11952b482d6d4834698d18a18ccb2ac1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseSpeed: 10
-  steerSpeed: 10
+  baseSpeed: 14
+  steerSpeed: 14
   turnSpeed: 120
   limitTurnAngle: 1
   maxSteerAngle: 60
   instantCameraFollow: 1
-  steerBodyTurnSpeed: 14
+  steerBodyTurnSpeed: 5
   lifeTime: 40
   despawnMargin: 10
-  boostMultiplier: 2
-  boostDuration: 3
+  animReferenceSpeed: 15
+  boostMultiplier: 1.6
+  boostDuration: 2
+  riddenSpeedMultiplier: 1.25
+  riddenBonusSpeed: 0
   bodyCenter: {x: 0, y: 1, z: 0}
-  bodyHalfExtents: {x: 0.9, y: 0.9, z: 1.9}
+  wallHitRadius: 0.7
+  wallCrashDelay: 2
   seat: {fileID: 4964642189547423015}
+  autoLabelAboveHead: 1
+  labelHeadPadding: 0.8
   labelOffset: {x: 0, y: 3.8, z: 0}
   highlightColor: {r: 1, g: 1, b: 0, a: 1}
-  highlightBrightness: 2
-  highlightEmission: 1
+  highlightBrightness: 0.5
+  highlightEmission: 0.5
   highlightColorBlend: 0.75
+  lowStaminaFlashColor: {r: 1, g: 0.12, b: 0.12, a: 1}
+  lowStaminaColorBlend: 0.72
+  lowStaminaFlashEmission: 1.4
+  lowStaminaFlashFreqMin: 3
+  lowStaminaFlashFreqMax: 9
+  herbivoreHopHeight: 0.55
+  herbivoreHopDurationMin: 0.2
+  herbivoreHopDurationMax: 0.32
+  herbivoreErraticYawAngle: 10
+  herbivoreControlScale: 0.25
+  herbivoreHopTurnSnappiness: 10
+  herbivoreHopPitchTilt: 12
+  herbivoreHopRollTilt: 10
+  herbivoreHopShakeIntensity: 0.06
+  herbivoreHopShakeDuration: 0.08
+  carnivoreMinSpeedRatio: 0.1
+  carnivoreSlowdownCurve: 1.1
+  carnivoreMinTurnScale: 0.25
+  carnivoreLiftDuration: 0.16
+  carnivoreSwallowDuration: 0.2
+  carnivoreFrontDistance: 1.8
+  carnivoreLiftHeight: 0.9
+  carnivoreSwallowEndScale: 0.08
+  carnivoreVictimSpinSpeed: 240
+  carnivoreSpawnDebris: 0
   aiLookAhead: 10
   aiProbeRadius: 1.1
   aiMaxOffset: 45

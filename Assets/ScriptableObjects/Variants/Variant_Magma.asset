@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: Magma
   isNormal: 0
-  moneyMultiplier: 8
+  moneyMultiplier: 4
+  staminaMultiplier: 0
   useTint: 1
   tint: {r: 1, g: 0.35, b: 0.05, a: 1}
   vfxPrefab: {fileID: 0}

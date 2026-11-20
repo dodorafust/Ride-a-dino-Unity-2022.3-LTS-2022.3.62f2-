@@ -51,7 +51,7 @@ ModelImporter:
       name: JumpUp
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 12
+      firstFrame: 15
       lastFrame: 24
       wrapMode: 0
       orientationOffsetY: 0
@@ -109,8 +109,8 @@ ModelImporter:
       name: JumpLand
       takeName: mixamo.com
       internalID: -6612345678901234562
-      firstFrame: 30.5
-      lastFrame: 44
+      firstFrame: 33
+      lastFrame: 52
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -120,12 +120,12 @@ ModelImporter:
       loopTime: 0
       loopBlend: 0
       loopBlendOrientation: 1
-      loopBlendPositionY: 0
+      loopBlendPositionY: 1
       loopBlendPositionXZ: 0
       keepOriginalOrientation: 1
-      keepOriginalPositionY: 0
+      keepOriginalPositionY: 1
       keepOriginalPositionXZ: 0
-      heightFromFeet: 1
+      heightFromFeet: 0
       mirror: 0
       bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
       curves: []

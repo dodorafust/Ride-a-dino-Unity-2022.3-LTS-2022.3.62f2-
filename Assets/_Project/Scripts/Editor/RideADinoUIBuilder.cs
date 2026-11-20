@@ -518,9 +518,9 @@ public static class RideADinoUIBuilder
         Place((RectTransform)jump.transform, BR, BR, new Vector2(-60f, 80f), new Vector2(220f, 220f));
         jump.gameObject.AddComponent<JumpButton>();
 
-        // Hotbar: ô cưỡi + 6 ô
+        // Hotbar: 6 ô + nút Q (Ride) tách riêng
         RectTransform bar = NewRect("Hotbar", hud);
-        Place(bar, BC, BC, new Vector2(0f, 16f), new Vector2(760f, 104f));
+        Place(bar, BC, BC, new Vector2(0f, 16f), new Vector2(660f, 104f));
         HorizontalLayoutGroup hl = bar.gameObject.AddComponent<HorizontalLayoutGroup>();
         hl.spacing = 8f;
         hl.childAlignment = TextAnchor.MiddleCenter;
@@ -529,8 +529,9 @@ public static class RideADinoUIBuilder
         hl.childForceExpandWidth = false;
         hl.childForceExpandHeight = false;
 
-        HotbarSlotUI rideSlot = ((GameObject)PrefabUtility.InstantiatePrefab(slotPrefab.gameObject, bar)).GetComponent<HotbarSlotUI>();
+        HotbarSlotUI rideSlot = ((GameObject)PrefabUtility.InstantiatePrefab(slotPrefab.gameObject, hud)).GetComponent<HotbarSlotUI>();
         rideSlot.name = "RideSlot";
+        Place(rideSlot.GetComponent<RectTransform>(), BC, BC, new Vector2(-450f, 16f), new Vector2(104f, 104f));
         hc.rideSlot = rideSlot;
         hc.slots = new HotbarSlotUI[6];
         for (int i = 0; i < 6; i++)
@@ -574,7 +575,10 @@ public static class RideADinoUIBuilder
         promptBtn.targetGraphic = promptBg;
         Image keyBg = NewImage(promptBg.transform, "KeyIcon", new Color(1f, 1f, 1f, 0.25f), DiscSprite, false);
         Place(keyBg.rectTransform, ML, ML, new Vector2(14f, 0f), new Vector2(64f, 64f));
-        NewText(keyBg.transform, "KeyText", "E", 34f, Color.white, TextAlignmentOptions.Center);
+        Sprite handSp = Resources.Load<Sprite>("UI/TapHandIcon");
+        Image handImg = NewImage(keyBg.transform, "HandIcon", Color.white, handSp, false);
+        handImg.preserveAspect = true;
+        Place(handImg.rectTransform, C, C, Vector2.zero, new Vector2(46f, 46f));
         TextMeshProUGUI pTitle = NewText(promptBg.transform, "Title", "Dino", 22f, new Color(1f, 1f, 1f, 0.7f), TextAlignmentOptions.MidlineLeft);
         Place(pTitle.rectTransform, ML, ML, new Vector2(94f, 22f), new Vector2(230f, 30f));
         TextMeshProUGUI pAction = NewText(promptBg.transform, "Action", "Ride", 38f, Color.white, TextAlignmentOptions.MidlineLeft);
@@ -583,6 +587,9 @@ public static class RideADinoUIBuilder
         prompt.button = promptBtn;
         prompt.titleText = pTitle;
         prompt.actionText = pAction;
+        prompt.placeAtFeet = true;
+        prompt.feetOffset = new Vector3(0f, 0.1f, 0f);
+        prompt.screenOffset = new Vector2(0f, -60f);
         hc.ridePrompt = prompt;
 
         // ---- 4. Popup Dinosaurs

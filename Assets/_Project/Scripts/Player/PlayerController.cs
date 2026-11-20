@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 
 public enum PlayerState { Walking, Jumping, Catching, Riding, Sitting, Dead }
-public enum DeathReason { StaminaEmpty, WallHit, MissedJump, Fell }
+public enum DeathReason { StaminaEmpty, WallHit, MissedJump, Fell, CarnivoreKill }
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -47,17 +47,25 @@ public class PlayerController : MonoBehaviour
     public float steerDelayAfterMount = 0f;
 
     [Header("Dino Riding Steering")]
-    public bool limitDinoTurnAngle = true;         // tắt = cho phép Dino quay đầu tự do theo camera (không giới hạn góc)
+    [Tooltip("Bật: xoay camera sẽ tự điều hướng khi chạy/bay/cưỡi. Tắt: chỉ điều khiển hướng bằng joystick hoặc WASD.")]
+    public bool cameraSteerEnabled = false;
+    public bool limitDinoTurnAngle = false;        // tắt = cho phép Dino quay đầu tự do theo camera & nút di chuyển (không giới hạn góc)
     public float dinoMaxTurnAngle = 60f;           // góc quay đầu tối đa (độ) khi bật giới hạn
 
-    [Header("Throw (hết Stamina sau khi tame xong)")]
-    public float throwForward = 6f;
-    public float throwUp = 11f;
+    [Header("Throw (Dino ăn cỏ hất văng khi hết Stamina)")]
+    public float throwForward = 14f;
+    public float throwUp = 15f;
 
     [Header("Chết khi đang cưỡi Dino (hết Stamina / đâm tường)")]
     public float deathThrowForward = 4.2f;         // lực hất thêm về phía trước mặt Dino
     public float deathThrowUp = 5.5f;              // lực nảy lên trước khi rơi xuống đất
     public float deathFallGravityScale = 1.5f;     // trọng lực lúc bị quăng rơi xuống đất
+
+    [Header("Dino Ăn thịt hết Stamina (Dừng & Giết / Hook Cutscene)")]
+    [Min(0f)] public float carnivoreStopHoldDuration = 0.45f; // thời gian dừng hẳn trước khi giết
+    [Tooltip("Bật sau này khi đã gắn cutscene riêng cho sự kiện On Carnivore Kill.")]
+    public bool useCustomCarnivoreKillCutscene = false;
+    public UnityEngine.Events.UnityEvent onCarnivoreKill;
 
     [Header("Rơi khỏi map")]
     public float fallDeathY = -20f;            // thấp hơn mức này = chết (DeathZone là cách khác)
@@ -73,16 +81,51 @@ public class PlayerController : MonoBehaviour
     public Transform ropeHand;                     // điểm xuất phát dây kéo (để trống = tự lấy tay phải Humanoid)
     public float modelTurnSpeed = 14f;
     public Vector3 ridingModelOffset = Vector3.zero;   // chỉnh độ cao/tiến lùi của nhân vật khi ngồi trên lưng Dino
+    public float rideBounceHeight = 0.05f;             // biên độ nhún lên xuống khi cưỡi Dino chạy
+    public float rideSwayX = 0.03f;                    // biên độ lắc ngang trái/phải theo nhịp bước chân Dino
+    public float rideBounceBaseFreq = 5.5f;            // tần số nhún cơ bản (tự tăng tỉ lệ theo tốc độ Dino)
+    [Range(0.3f, 1.5f)] public float rideBounceSharpness = 0.65f; // < 1: đạp chân nảy gắt có gia tốc hơn, = 1: sin đều
+    public float rideBounceTilt = 2.5f;                // độ nghiêng lắc nhẹ người theo nhịp chạy của Dino
     [Range(0f, 1f)] public float airLegRelax = 0.5f;   // độ duỗi bớt cẳng chân trên không (0 = co sát mông như gốc, 1 = duỗi thẳng)
     [Range(0f, 1f)] public float airFootSync = 0.75f;  // đồng bộ cổ chân trên không để không bị duỗi xuống rồi vểnh ngược lên
     public float airFootPitch = 12f;                   // góc mũi chân khi ở trên không (độ, dương = hơi duỗi tự nhiên, âm = vểnh lên)
-    public float landDipDepth = 0.16f;                 // độ nhún đệm trọng tâm khi vừa tiếp đất
+    public float landDipDepth = 0f;                    // độ nhún hạ model khi tiếp đất (0 = tắt để chân không bị lún xuống sàn)
     public float landDipDuration = 0.18f;              // thời gian nhún đệm tiếp đất rồi đứng thẳng dậy (giây)
     public float deathRespawnDelay = 1.3f;             // thời gian chờ phát animation chết trước khi về điểm spawn
+    [Header("Khớp tay quăng dây (chỉnh trực tiếp)")]
+    public float lassoSpinSpeed = 9f;                  // tốc độ quay vòng dây thòng lọng (rad/s)
+    [Range(0f, 1f)] public float lassoShoulderLiftWeight = 0.45f;      // mức nâng bả vai theo bắp tay (tăng lên để hết lõm vai)
+    public Vector3 lassoShoulderOffset = new Vector3(0f, 0f, 0f);        // góc bù (X,Y,Z) của xương bả vai (RightShoulder)
+    public Vector3 lassoShoulderPosOffset = new Vector3(0f, 0.015f, 0f); // dịch nhẹ vị trí xương vai để làm phồng phần vai áo
+    public Vector3 lassoUpperArmDir = new Vector3(0.82f, 0.25f, 0.38f);  // hướng bắp tay trên (X=phải, Y=lên, Z=trước)
+    public float lassoUpperArmTwist = -70f;            // xoay trục bắp tay trên (độ, âm = xoay cùi chỏ xuống dưới/ra sau)
+    public Vector3 lassoForearmDir = new Vector3(0.32f, 0.90f, 0.22f);   // hướng cẳng tay (gập khuỷu tay hướng lên trên tự nhiên)
+    public float lassoForearmTwist = -35f;             // xoay trục cẳng tay (độ, âm = xoay lòng bàn tay hướng vào trong)
+    public Vector3 lassoHandAngles = new Vector3(0f, -25f, 10f);         // góc xoay tinh chỉnh 3 trục (X,Y,Z) của cổ tay/bàn tay
+    public Vector3 lassoGripLocalOffset = new Vector3(0f, 0.09f, 0f);    // vị trí điểm cầm dây trên bàn tay (tinh chỉnh live)
+    public float lassoBobAmplitude = 4f;               // biên độ nhấp nâng lên/hạ xuống nhẹ của tay (độ)
+    public float catchArmOutward = 0.65f;              // độ mở tay phải ra ngoài khi thu dây bắt Dino (tránh ép vào ngực/đầu)
+    public float catchArmUpward = 0.25f;               // độ nâng tay phải lên nhẹ khi thu dây bắt Dino
+
+    [Header("Tự động triệu hồi Pet (nút Q) khi vào RunZone")]
+    public float petSummonRiseDuration = 0.36f;        // thời gian Dino trồi lên và đẩy người chơi lên lưng
+
+    [Header("Vác Dino trên đầu (2 tay giơ lên)")]
+    public Vector3 holdDinoOffset = new Vector3(0f, 1.85f, 0.12f);
+    public Vector3 holdDinoEuler = Vector3.zero;
+    [Min(0.1f)] public float holdDinoScaleMultiplier = 1f; // 1 = giữ nguyên 100% kích thước thật của model Dino
+    [Range(0f, 1.5f)] public float holdBoneSwayWeight = 0.85f; // mức độ rung/nghiêng Dino theo nhịp xương ngực/cơ thể khi di chuyển
+    public bool holdFollowPitch = true;                    // bật/tắt nghiêng trước-sau theo xương lưng Player
+    [Range(0f, 20f)] public float holdMaxPitchAngle = 6f;  // giới hạn góc ngửa/chúi tối đa (độ) để không bị ngửa mặt lên trời
+    public bool freezeHoldDinoAnimator = false;            // bật nếu muốn đóng băng animation Dino khi cầm trên tay
+    public float holdLabelHeight = 0.8f;
 
     public PlayerState State { get; private set; } = PlayerState.Walking;
     public Dino CurrentDino { get { return currentDino; } }
+    public DinoMachine CurrentMachine { get { return machine; } }
     public Vector3 Velocity { get { return velocity; } }
+    public Vector2 RideBounceOffset { get; private set; }
+    public float RideBounceOffsetY { get { return RideBounceOffset.y; } }
     public bool RunActive { get; private set; }     // đang trong chế độ bắt Dino
     // Đang ở trên không và có Dino được nhắm -> bấm nút nhảy là bắt ngay (UI đổi icon mũi tên xuống)
     public bool CatchReady { get { return State == PlayerState.Jumping && targetDino != null; } }
@@ -93,18 +136,37 @@ public class PlayerController : MonoBehaviour
     RunZone runZone;
     DinoMachine machine;
     MountController mount;
+    DinoSpawner spawner;
 
     Dino currentDino, targetDino, lastDino;
-    Transform leftLowerLeg, rightLowerLeg, leftFoot, rightFoot;
+    Transform leftLowerLeg, rightLowerLeg, leftFoot, rightFoot,
+              leftShoulder, leftUpperArm, leftLowerArm, leftHand,
+              rightShoulder, rightUpperArm, rightLowerArm, ropeGrip, carryBone;
     Quaternion leftFootRestRot = Quaternion.identity, rightFootRestRot = Quaternion.identity;
-    float airLegBlend, airFootBlend, landDipTimer;
+    Quaternion leftShoulderBaseLocalRot = Quaternion.identity, leftArmBaseLocalRot = Quaternion.identity,
+               leftLowerArmBaseLocalRot = Quaternion.identity, leftHandBaseLocalRot = Quaternion.identity;
+    Quaternion lassoShoulderBaseLocalRot = Quaternion.identity, lassoArmBaseLocalRot = Quaternion.identity,
+               lassoLowerArmBaseLocalRot = Quaternion.identity, lassoHandBaseLocalRot = Quaternion.identity;
+    Vector3 lassoShoulderBaseLocalPos, leftShoulderBaseLocalPos, carryBoneRestLocalOffset, carryHandsRestLocal;
+    Quaternion carryBoneRestLocalRot = Quaternion.identity;
+    bool hasLassoBaseRot, hasLeftArmBaseRot, hasCarryBone, hasCarryIdleRef;
+    float airLegBlend, airFootBlend, landDipTimer, rideBouncePhase, lassoSpinPhase, lassoArmBlend, holdArmBlend;
+    OwnedDino currentHoldVisualDino;
+    GameObject holdVisualRoot;
     Vector3 moveInput, catchStart, startPosition, visualBaseLocalPos;
     float catchTimer, activeCatchDuration, steerEnableTime, catchLockUntil, lastGroundedTime = -999f, lastJumpPressedTime = -999f, airTime;
+    float lastMoveInputTime = -999f;
+    const float runStopGrace = 0.05f;
     bool jumpPressed;
     bool jumpedThisAirborne;
     bool diesOnGround;
     bool deadFalling;
     bool glideExpired;
+    bool waitMoveReleaseToStandUp;
+    bool petAutoMountedOnRunEntry;
+    bool petRising;
+    float petRiseTimer;
+    Vector3 petRiseStartLocal;
     Vector3 velocity;              // vận tốc tự quản (thay cho Rigidbody)
     CollisionFlags lastFlags;
     float currentUpGravity;        // g = -2H / Th^2 của cú nhảy hiện tại
@@ -160,6 +222,53 @@ public class PlayerController : MonoBehaviour
             if (animator.isHuman)
             {
                 if (ropeHand == null) ropeHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+                leftShoulder = animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                leftUpperArm = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+                leftLowerArm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+                leftHand = animator.GetBoneTransform(HumanBodyBones.LeftHand);
+                rightShoulder = animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+                rightUpperArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+                rightLowerArm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+                if (leftUpperArm != null && leftLowerArm != null && leftHand != null)
+                {
+                    if (leftShoulder != null)
+                    {
+                        leftShoulderBaseLocalRot = leftShoulder.localRotation;
+                        leftShoulderBaseLocalPos = leftShoulder.localPosition;
+                    }
+                    leftArmBaseLocalRot = leftUpperArm.localRotation;
+                    leftLowerArmBaseLocalRot = leftLowerArm.localRotation;
+                    leftHandBaseLocalRot = leftHand.localRotation;
+                    hasLeftArmBaseRot = true;
+                }
+                carryBone = animator.GetBoneTransform(HumanBodyBones.UpperChest);
+                if (carryBone == null) carryBone = animator.GetBoneTransform(HumanBodyBones.Chest);
+                if (carryBone == null) carryBone = animator.GetBoneTransform(HumanBodyBones.Spine);
+                if (carryBone != null)
+                {
+                    carryBoneRestLocalOffset = animator.transform.InverseTransformPoint(carryBone.position);
+                    carryBoneRestLocalRot = Quaternion.Inverse(animator.transform.rotation) * carryBone.rotation;
+                    hasCarryBone = true;
+                }
+                if (ropeHand != null)
+                {
+                    var gripGo = new GameObject("RopeGrip");
+                    gripGo.transform.SetParent(ropeHand, false);
+                    gripGo.transform.localPosition = new Vector3(0f, 0.09f, 0f);
+                    ropeGrip = gripGo.transform;
+                }
+                if (rightUpperArm != null && rightLowerArm != null && rightUpperArm.parent != null)
+                {
+                    if (rightShoulder != null)
+                    {
+                        lassoShoulderBaseLocalRot = rightShoulder.localRotation;
+                        lassoShoulderBaseLocalPos = rightShoulder.localPosition;
+                    }
+                    lassoArmBaseLocalRot = rightUpperArm.localRotation;
+                    lassoLowerArmBaseLocalRot = rightLowerArm.localRotation;
+                    if (ropeHand != null) lassoHandBaseLocalRot = ropeHand.localRotation;
+                    hasLassoBaseRot = true;
+                }
                 leftLowerLeg = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
                 rightLowerLeg = animator.GetBoneTransform(HumanBodyBones.RightLowerLeg);
                 leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
@@ -176,6 +285,7 @@ public class PlayerController : MonoBehaviour
         camRig = FindObjectOfType<CameraRig>();
         runZone = FindObjectOfType<RunZone>();
         mount = MountController.Instance;
+        spawner = FindObjectOfType<DinoSpawner>();
         CacheAnimatorParams();
         if (runZone == null)
             Debug.LogWarning("PlayerController: không thấy RunZone, chế độ bắt Dino sẽ luôn bật.");
@@ -189,9 +299,21 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        jumpPressed = GameInput.ConsumeJump();
-        if (jumpPressed) lastJumpPressedTime = Time.time;
-        ReadMoveInput();
+        bool sellPopupOpen = SellDinosPopup.Instance != null && SellDinosPopup.Instance.Visible;
+        if (sellPopupOpen)
+        {
+            GameInput.ConsumeJump();
+            jumpPressed = false;
+            moveInput = Vector3.zero;
+            velocity.x = 0f;
+            velocity.z = 0f;
+        }
+        else
+        {
+            jumpPressed = GameInput.ConsumeJump();
+            if (jumpPressed) lastJumpPressedTime = Time.time;
+            ReadMoveInput();
+        }
         UpdateRunActive();
 
         if (State != PlayerState.Sitting && transform.position.y < fallDeathY)
@@ -218,12 +340,23 @@ public class PlayerController : MonoBehaviour
         return Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
     }
 
+    Vector3 RunForwardFlat()
+    {
+        if (runZone != null)
+        {
+            Vector3 rf = Vector3.ProjectOnPlane(runZone.transform.forward, Vector3.up);
+            if (rf.sqrMagnitude > 0.001f) return rf.normalized;
+        }
+        return Vector3.forward;
+    }
+
     void ReadMoveInput()
     {
         Vector2 m = GameInput.Move;
         Vector3 right = Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized;
         moveInput = CamForwardFlat() * m.y + right * m.x;
         if (moveInput.sqrMagnitude > 1f) moveInput.Normalize();
+        if (moveInput.sqrMagnitude > 0.01f) lastMoveInputTime = Time.time;
     }
 
     // Mặt đất = layer Ground + mọi collider rắn ở layer Default (sàn Pen, bục, vật cản...).
@@ -262,8 +395,89 @@ public class PlayerController : MonoBehaviour
         Bounds b = new Bounds(transform.position + cc.center,
                               new Vector3(cc.radius * 2f, cc.height, cc.radius * 2f));
         bool inZone = runZone == null || runZone.ContainsBody(b);
-        RunActive = inZone || diesOnGround ||
+        if (!inZone && State == PlayerState.Jumping)
+        {
+            // Bay ngược ra ngoài đường chạy -> hủy trạng thái chạy, đáp đất bình thường không chết
+            diesOnGround = false;
+            steerWithCamera = false;
+            SetTarget(null);
+            if (preview != null) preview.Hide();
+        }
+        // Nếu đang nhảy từ ngoài vùng chạy vào (RunActive đang false và đang ở trạng thái Jumping),
+        // giữ nguyên RunActive = false cho tới khi tiếp đất thành công mới kích hoạt RunZone.
+        bool canActivateInState = State != PlayerState.Jumping || RunActive;
+        RunActive = (inZone && canActivateInState) || diesOnGround ||
                     State == PlayerState.Riding || State == PlayerState.Catching;
+    }
+
+    void CancelRunToNormal()
+    {
+        bool keepPetMounted = false;
+        if (currentDino != null && currentDino.IsPetOwned)
+        {
+            Vector3 exitPos = currentDino.transform.position;
+            if (Physics.Raycast(exitPos + Vector3.up * 3f, Vector3.down, out RaycastHit gHit, 12f,
+                                GroundCheckMask(), QueryTriggerInteraction.Ignore))
+                exitPos.y = gHit.point.y + 1.02f;
+            else
+                exitPos.y += 1.02f;
+            float exitYaw = currentDino.transform.eulerAngles.y;
+
+            transform.SetParent(null);
+            transform.SetPositionAndRotation(exitPos, Quaternion.Euler(0f, exitYaw, 0f));
+            SetBodyActive(true);
+            lastGroundedTime = Time.time;
+
+            if (!petAutoMountedOnRunEntry && mount != null)
+            {
+                // Đã cưỡi sẵn Pet đi vào rồi đi ra -> giữ nguyên đang ngồi trên Pet đi lại bình thường
+                keepPetMounted = true;
+                currentDino.SuppressPetReturnOnDestroy();
+                Destroy(currentDino.gameObject);
+                currentDino = null;
+                mount.ResumeMountedFromRun();
+            }
+            else
+            {
+                // Tự triệu hồi nút Q khi vào vùng chạy -> đi ra thì trả Dino về Pen ngay
+                Destroy(currentDino.gameObject);
+                currentDino = null;
+            }
+        }
+        else if (currentDino != null)
+        {
+            ReleaseDino();
+        }
+
+        petAutoMountedOnRunEntry = false;
+        petRising = false;
+        carnivoreKillPending = false;
+        carnivoreKillTimer = 0f;
+        ride.End();
+        SetTarget(null);
+        if (preview != null)
+        {
+            preview.Hide();
+            preview.SetRope(null, null);
+        }
+        lastDino = null;
+        diesOnGround = false;
+        steerWithCamera = false;
+        glideExpired = false;
+        lastMoveInputTime = -999f;
+        velocity = Vector3.zero;
+        RunActive = false;
+        State = PlayerState.Walking;
+        if (animator != null)
+        {
+            animator.transform.localPosition = visualBaseLocalPos;
+            animator.transform.localRotation = Quaternion.identity;
+            if (hasIsRiding && !keepPetMounted) animator.SetBool("IsRiding", false);
+            if (hasIsJumping) animator.SetBool("IsJumping", false);
+            if (hasIsFalling) animator.SetBool("IsFalling", false);
+            if (hasIsLassoing) animator.SetBool("IsLassoing", false);
+        }
+        HudController.Say("Exited run zone", 1.5f);
     }
 
     Vector3 RespawnPos()
@@ -304,15 +518,137 @@ public class PlayerController : MonoBehaviour
         if (mount != null) mount.ForceDismount();
     }
 
+    public void OnDismountFromPetSeat(Vector3 seatWorldPos, Quaternion exitRot)
+    {
+        if (State != PlayerState.Walking || RunActive) return;
+
+        float targetRootY = Mathf.Max(transform.position.y, seatWorldPos.y - visualBaseLocalPos.y);
+        if (targetRootY > transform.position.y + 0.05f)
+        {
+            bool wasEnabled = cc != null && cc.enabled;
+            if (cc != null) cc.enabled = false;
+            transform.position = new Vector3(seatWorldPos.x, targetRootY, seatWorldPos.z);
+            if (cc != null) cc.enabled = wasEnabled;
+        }
+
+        if (animator != null)
+        {
+            animator.transform.localPosition = visualBaseLocalPos;
+            Vector3 e = exitRot.eulerAngles;
+            animator.transform.rotation = Quaternion.Euler(0f, e.y, 0f);
+            if (hasIsRiding) animator.SetBool("IsRiding", false);
+            if (hasIsGrounded) animator.SetBool("IsGrounded", false);
+            if (hasIsFalling) animator.SetBool("IsFalling", true);
+        }
+
+        lastGroundedTime = -999f;
+        jumpedThisAirborne = false;
+        velocity.y = 0f;
+        currentUpGravity = GetUpwardGravity(false);
+        steerWithCamera = false;
+        diesOnGround = false;
+        glideExpired = false;
+        airTime = 0f;
+        landDipTimer = 0f;
+        State = PlayerState.Jumping;
+    }
+
+    void PlayJumpTakeoffAnim()
+    {
+        if (mount != null && mount.Mounted) return;
+        airLegBlend = 0f;
+        airFootBlend = 0f;
+        if (animator == null) return;
+        if (hasIsJumping) animator.SetBool("IsJumping", true);
+        if (hasIsFalling) animator.SetBool("IsFalling", false);
+        if (hasIsGrounded) animator.SetBool("IsGrounded", false);
+        if (hasJumpStart) animator.SetTrigger("JumpStart");
+        int jumpUpHash = Animator.StringToHash("Base Layer.JumpUp");
+        if (animator.HasState(0, jumpUpHash))
+            animator.CrossFadeInFixedTime(jumpUpHash, 0.04f, 0, 0f);
+    }
+
     // ---------- Walking ----------
+    void EnterRunWithPetDino(bool autoSummoned)
+    {
+        if (mount == null || mount.SlotDino == null || mount.SlotDino.data == null) return;
+        if (!autoSummoned && !mount.Mounted) return;
+        if (autoSummoned && (mount.Mounted || mount.InRunAsDino)) return;
+
+        if (spawner == null) spawner = FindObjectOfType<DinoSpawner>();
+        Dino prefab = spawner != null ? spawner.dinoPrefab : null;
+        if (prefab == null)
+        {
+            Dino[] found = Resources.FindObjectsOfTypeAll<Dino>();
+            if (found != null && found.Length > 0) prefab = found[0];
+        }
+        if (prefab == null) return;
+
+        Vector3 playerWorldBeforeMount = transform.position;
+        OwnedDino petOwned = mount.SlotDino;
+        float petSpeed = petOwned.data.runSpeed * mount.petSpeedMultiplier;
+        float runYaw = spawner != null ? spawner.transform.eulerAngles.y : transform.eulerAngles.y;
+
+        if (autoSummoned) mount.HandOffAutoSummonedToRunDino();
+        else mount.HandOffToRunDino();
+
+        Vector3 spawnPos = transform.position;
+        if (Physics.Raycast(transform.position + Vector3.up * 2f, Vector3.down, out RaycastHit gHit, 10f,
+                            GroundCheckMask(), QueryTriggerInteraction.Ignore))
+            spawnPos.y = gHit.point.y;
+
+        Dino d = Instantiate(prefab, spawnPos, Quaternion.Euler(0f, runYaw, 0f));
+        d.Setup(petOwned, petSpeed, runYaw, runZone);
+        d.MarkAsPetOwned();
+        if (spawner != null && spawner.useActiveWindow)
+            d.SetWindow(transform, spawner.transform.position, spawner.transform.forward, spawner.despawnBehind, spawner.despawnAhead);
+
+        petAutoMountedOnRunEntry = autoSummoned;
+        d.IsRidden = true;
+        currentDino = d;
+        velocity = Vector3.zero;
+        SetBodyActive(false);
+
+        if (autoSummoned)
+            d.PlaySummonRise(petSummonRiseDuration);
+
+        MountDino();
+
+        if (autoSummoned && currentDino != null && currentDino.seat != null)
+        {
+            petRising = true;
+            petRiseTimer = 0f;
+            petRiseStartLocal = currentDino.seat.InverseTransformPoint(playerWorldBeforeMount);
+            transform.localPosition = petRiseStartLocal;
+        }
+        else
+        {
+            petRising = false;
+        }
+    }
+
     void UpdateWalking()
     {
+        if (RunActive && mount != null)
+        {
+            if (mount.Mounted)
+            {
+                EnterRunWithPetDino(false);
+                if (State == PlayerState.Riding) return;
+            }
+            else if (!mount.InRunAsDino && mount.SlotDino != null)
+            {
+                EnterRunWithPetDino(true);
+                if (State == PlayerState.Riding) return;
+            }
+        }
+
         float dt = Time.deltaTime;
-        float speedMul = mount != null ? mount.SpeedMultiplier : 1f;
+        float moveSpeed = (mount != null && mount.Mounted) ? mount.CurrentMoveSpeed : walkSpeed;
         Vector3 moveDir = moveInput.sqrMagnitude > 0.01f
             ? moveInput.normalized
-            : (RunActive ? CamForwardFlat() : Vector3.zero);
-        Vector3 horiz = moveDir * walkSpeed * speedMul;
+            : (RunActive ? (cameraSteerEnabled ? CamForwardFlat() : RunForwardFlat()) : Vector3.zero);
+        Vector3 horiz = moveDir * moveSpeed;
         bool grounded = IsGrounded();
 
         if (grounded && velocity.y < 0f) velocity.y = -2f;      // dính xuống đất, đi dốc không bị nảy
@@ -320,6 +656,8 @@ public class PlayerController : MonoBehaviour
         if (HasBufferedJump() && grounded)
         {
             ConsumeJumpBuffer();
+            bool jumpedOffPet = RunActive && mount != null && mount.Mounted;
+            if (jumpedOffPet) DismountPet();
             lastGroundedTime = -999f;
             jumpedThisAirborne = true;
             velocity.y = GetJumpVelocity(RunActive);
@@ -330,7 +668,7 @@ public class PlayerController : MonoBehaviour
             airTime = 0f;
             landDipTimer = 0f;
             State = PlayerState.Jumping;
-            if (animator != null && hasJumpStart) animator.SetTrigger("JumpStart");
+            PlayJumpTakeoffAnim();
 
             // Tích phân Velocity Verlet cho frame nhảy đầu tiên: y += (v0 + 0.5 * g * dt) * dt
             velocity.x = horiz.x;
@@ -402,7 +740,7 @@ public class PlayerController : MonoBehaviour
             glideExpired = false;
             airTime = 0f;
             landDipTimer = 0f;
-            if (animator != null && hasJumpStart) animator.SetTrigger("JumpStart");
+            PlayJumpTakeoffAnim();
         }
 
         // Hết thời gian cố định trên không: có Dino trong vòng target thì tự bắt, không có thì rơi xuống đất chết
@@ -521,19 +859,30 @@ public class PlayerController : MonoBehaviour
             if (HasBufferedJump())
             {
                 ConsumeJumpBuffer();
+                if (!RunActive)
+                {
+                    Bounds b = new Bounds(transform.position + cc.center,
+                                          new Vector3(cc.radius * 2f, cc.height, cc.radius * 2f));
+                    if (runZone == null || runZone.ContainsBody(b))
+                    {
+                        RunActive = true;
+                        steerWithCamera = true;
+                    }
+                }
                 lastGroundedTime = -999f;
                 jumpedThisAirborne = true;
                 airTime = 0f;
                 landDipTimer = 0f;
                 velocity.y = GetJumpVelocity(RunActive);
                 currentUpGravity = GetUpwardGravity(RunActive);
-                if (animator != null && hasJumpStart) animator.SetTrigger("JumpStart");
+                PlayJumpTakeoffAnim();
                 return;
             }
 
             jumpedThisAirborne = false;
             velocity.y = -2f;
             landDipTimer = landDipDuration;
+            lastMoveInputTime = -999f;
             State = PlayerState.Walking;
             if (animator != null && hasLand) animator.SetTrigger("Land");
         }
@@ -549,10 +898,19 @@ public class PlayerController : MonoBehaviour
 
         if (steerWithCamera)
         {
-            Vector3 wishDir = moveInput.sqrMagnitude > 0.01f
-                ? (CamForwardFlat() * 0.6f + moveInput)
-                : CamForwardFlat();
-            if (wishDir.sqrMagnitude < 0.001f) wishDir = CamForwardFlat();
+            Vector3 wishDir;
+            if (cameraSteerEnabled)
+            {
+                wishDir = moveInput.sqrMagnitude > 0.01f
+                    ? (CamForwardFlat() * 0.6f + moveInput)
+                    : CamForwardFlat();
+                if (wishDir.sqrMagnitude < 0.001f) wishDir = CamForwardFlat();
+            }
+            else
+            {
+                Vector3 curDir = h.sqrMagnitude > 0.001f ? h.normalized : RunForwardFlat();
+                wishDir = moveInput.sqrMagnitude > 0.01f ? moveInput : curDir;
+            }
             wishDir.Normalize();
 
             float targetSpd = Mathf.Clamp(Mathf.Max(h.magnitude, walkSpeed + bonusSpd), walkSpeed, maxAirSpeed);
@@ -722,11 +1080,19 @@ public class PlayerController : MonoBehaviour
         FaceCatchTarget(1f);
 
         if (preview != null)
-            preview.SetRope(ropeHand != null ? ropeHand : transform, d.seat);
+        {
+            preview.Hide();
+            preview.SetRope(ropeGrip != null ? ropeGrip : (ropeHand != null ? ropeHand : transform), d.transform, d.bodyCenter);
+        }
     }
 
     void UpdateCatching()
     {
+        if (runZone != null && !runZone.ContainsPoint(transform.position, 0f))
+        {
+            CancelRunToNormal();
+            return;
+        }
         if (currentDino == null)
         {
             SetTarget(null);
@@ -774,6 +1140,8 @@ public class PlayerController : MonoBehaviour
 
         lastDino = null;
         diesOnGround = false;
+        carnivoreKillPending = false;
+        carnivoreKillTimer = 0f;
         currentDino.Boost();
         steerEnableTime = Time.time + steerDelayAfterMount;
 
@@ -783,6 +1151,7 @@ public class PlayerController : MonoBehaviour
 
         if (animator != null)
         {
+            animator.transform.localPosition = visualBaseLocalPos;
             if (hasIsJumping) animator.SetBool("IsJumping", false);
             if (hasIsFalling) animator.SetBool("IsFalling", false);
             if (hasIsLassoing) animator.SetBool("IsLassoing", false);
@@ -793,17 +1162,68 @@ public class PlayerController : MonoBehaviour
     }
 
     // ---------- Riding ----------
+    bool carnivoreKillPending;
+    float carnivoreKillTimer;
+
     void UpdateRiding()
     {
+        // Chạy ngược ra khỏi đường chạy (về phía vạch xuất phát) -> hủy chạy, trả về bình thường
+        Vector3 checkPos = currentDino != null ? currentDino.transform.position : transform.position;
+        if (runZone != null && !runZone.ContainsPoint(checkPos, 1f))
+        {
+            CancelRunToNormal();
+            return;
+        }
+
+        if (carnivoreKillPending)
+        {
+            if (currentDino != null) currentDino.SetLowStaminaState(true, 1f, true);
+            carnivoreKillTimer -= Time.deltaTime;
+            if (carnivoreKillTimer <= 0f)
+            {
+                carnivoreKillPending = false;
+                TriggerCarnivoreKill(currentDino);
+            }
+            return;
+        }
+
         // Húc tường = chết ngay (tường là object có script Wall)
         if (currentDino.TouchingWall) { Die(DeathReason.WallHit); return; }
 
-        currentDino.SetSteer(GameInput.Move.x);                // joystick trái/phải hoặc A/D
+        if (petRising)
+        {
+            petRiseTimer += Time.deltaTime;
+            float dur = Mathf.Max(0.05f, petSummonRiseDuration);
+            float t = Mathf.Clamp01(petRiseTimer / dur);
+            float ease = t * t * (3f - 2f * t);
+            transform.localPosition = Vector3.Lerp(petRiseStartLocal, Vector3.zero, ease);
+            if (t >= 1f)
+            {
+                transform.localPosition = Vector3.zero;
+                petRising = false;
+            }
+        }
+
         currentDino.limitTurnAngle = limitDinoTurnAngle;
         currentDino.maxSteerAngle = dinoMaxTurnAngle;
 
         if (Time.time >= steerEnableTime)
-            currentDino.SetHeading(cam.eulerAngles.y);         // xoay camera = lái hướng Dino
+        {
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                float targetYaw = Quaternion.LookRotation(moveInput, Vector3.up).eulerAngles.y;
+                currentDino.SetHeading(targetYaw);
+                currentDino.SetSteer(0f);
+            }
+            else
+            {
+                if (cameraSteerEnabled)
+                    currentDino.SetHeading(cam.eulerAngles.y);         // không bấm di chuyển -> chạy theo hướng camera
+                else
+                    currentDino.ResetHeading();
+                currentDino.SetSteer(0f);
+            }
+        }
 
         switch (ride.Tick(Time.deltaTime))
         {
@@ -816,7 +1236,19 @@ public class PlayerController : MonoBehaviour
             case RideEvent.StaminaEmptyThrow:
                 ThrowFromDino();
                 return;
+            case RideEvent.StaminaEmptyCarnivoreKill:
+                if (carnivoreStopHoldDuration > 0.01f)
+                {
+                    carnivoreKillPending = true;
+                    carnivoreKillTimer = carnivoreStopHoldDuration;
+                    if (currentDino != null) currentDino.SetLowStaminaState(true, 1f, true);
+                    return;
+                }
+                TriggerCarnivoreKill(currentDino);
+                return;
         }
+
+        if (currentDino != null) currentDino.SetLowStaminaState(ride.IsLowStamina, ride.LowStamina01, false);
 
         if (jumpPressed)
         {
@@ -824,7 +1256,11 @@ public class PlayerController : MonoBehaviour
             jumpedThisAirborne = true;
             // Giữ tốc độ của Dino đang cưỡi + cộng thêm dinoJumpForward để lao vượt lên phía trước
             float launchSpeed = Mathf.Min(maxAirSpeed, Mathf.Max(walkSpeed, currentDino.CurrentSpeed) + dinoJumpForward);
-            Vector3 vel = CamForwardFlat() * launchSpeed
+            Vector3 jumpFwd = cameraSteerEnabled
+                ? CamForwardFlat()
+                : Vector3.ProjectOnPlane(currentDino.transform.forward, Vector3.up).normalized;
+            if (jumpFwd.sqrMagnitude < 0.001f) jumpFwd = RunForwardFlat();
+            Vector3 vel = jumpFwd * launchSpeed
                         + Vector3.up * GetJumpVelocity(true);
             ReleaseDino();
             if (animator != null && hasJumpFromDino) animator.SetTrigger("JumpFromDino");
@@ -844,7 +1280,16 @@ public class PlayerController : MonoBehaviour
         OwnedDino owned = currentDino.Owned;
         currentDino.Claim();
         if (GameManager.Instance != null) GameManager.Instance.Inventory.Add(owned);
-        HudController.Say("Tamed " + owned.Title + "!  $" + NumberFormat.Short(owned.MoneyPerSecond) + "/s", 2.5f);
+        if (TameSecuredUI.Instance != null)
+        {
+            TameSecuredUI.Instance.NotifyTamed(owned);
+            if (!TameSecuredUI.Instance.hideDefaultToastOnTame)
+                HudController.Say("Tamed " + owned.Title + "!  $" + NumberFormat.Short(owned.MoneyPerSecond) + "/s", 2.5f);
+        }
+        else
+        {
+            HudController.Say("Tamed " + owned.Title + "!  $" + NumberFormat.Short(owned.MoneyPerSecond) + "/s", 2.5f);
+        }
     }
 
     void ThrowFromDino()
@@ -870,14 +1315,27 @@ public class PlayerController : MonoBehaviour
         SetBodyActive(true);
         lastGroundedTime = -1f;
 
+        currentDino.ClearLowStaminaEffect();
         currentDino.SetSteer(0f);
         currentDino.ResetHeading();
         currentDino.IsRidden = false;
 
         lastDino = currentDino;
         currentDino = null;
+        petAutoMountedOnRunEntry = false;
+        petRising = false;
+        carnivoreKillPending = false;
+        carnivoreKillTimer = 0f;
         catchLockUntil = Time.time + catchLockoutAfterJump;
         ride.End();
+    }
+
+    void TriggerCarnivoreKill(Dino killer)
+    {
+        if (onCarnivoreKill != null) onCarnivoreKill.Invoke();
+        if (useCustomCarnivoreKillCutscene) return;
+        // Hiện tại dùng tính năng hất xuống đất chết; về sau bật useCustomCarnivoreKillCutscene để chạy cutscene riêng.
+        Die(DeathReason.CarnivoreKill);
     }
 
     // ---------- Die / Respawn ----------
@@ -886,6 +1344,8 @@ public class PlayerController : MonoBehaviour
     void Die(DeathReason reason)
     {
         if (State == PlayerState.Dead) return;
+        carnivoreKillPending = false;
+        carnivoreKillTimer = 0f;
 
         Dino diedOnDino = currentDino;
         if (currentDino != null) ReleaseDino();
@@ -907,10 +1367,14 @@ public class PlayerController : MonoBehaviour
         diesOnGround = false;
         lastDino = null;
         catchLockUntil = 0f;
+        landDipTimer = 0f;
+        waitMoveReleaseToStandUp = false;
+        lastMoveInputTime = -999f;
         State = PlayerState.Dead;
 
         if (animator != null)
         {
+            animator.transform.localPosition = visualBaseLocalPos;
             if (hasIsJumping) animator.SetBool("IsJumping", false);
             if (hasIsFalling) animator.SetBool("IsFalling", false);
             if (hasIsRunning) animator.SetBool("IsRunning", false);
@@ -922,17 +1386,23 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 fwd = Vector3.ProjectOnPlane(diedOnDino.transform.forward, Vector3.up).normalized;
             if (fwd.sqrMagnitude < 0.001f) fwd = transform.forward;
-            velocity = fwd * (diedOnDino.baseSpeed + deathThrowForward) + Vector3.up * deathThrowUp;
+            bool wallCrash = reason == DeathReason.WallHit;
+            bool carnivoreKill = reason == DeathReason.CarnivoreKill;
+            velocity = wallCrash
+                ? Vector3.zero
+                : (carnivoreKill
+                    ? fwd * deathThrowForward + Vector3.up * deathThrowUp
+                    : fwd * (diedOnDino.baseSpeed + deathThrowForward) + Vector3.up * deathThrowUp);
             if (animator != null)
             {
                 animator.transform.rotation = Quaternion.LookRotation(fwd);
                 if (hasIsGrounded) animator.SetBool("IsGrounded", false);
-                if (hasIsJumping) animator.SetBool("IsJumping", true);
+                if (hasIsJumping) animator.SetBool("IsJumping", !wallCrash);
                 if (hasIsFalling) animator.SetBool("IsFalling", true);
                 if (hasVerticalSpeed) animator.SetFloat("VerticalSpeed", velocity.y);
                 int jumpUp = Animator.StringToHash("Base Layer.JumpUp");
                 int freeFall = Animator.StringToHash("Base Layer.FreeFall");
-                if (animator.HasState(0, jumpUp)) animator.CrossFadeInFixedTime(jumpUp, 0.06f, 0);
+                if (!wallCrash && animator.HasState(0, jumpUp)) animator.CrossFadeInFixedTime(jumpUp, 0.06f, 0);
                 else if (animator.HasState(0, freeFall)) animator.CrossFadeInFixedTime(freeFall, 0.06f, 0);
             }
             deadFalling = true;
@@ -943,13 +1413,18 @@ public class PlayerController : MonoBehaviour
             deadFalling = false;
             velocity = Vector3.zero;
             SetBodyActive(false);
-            if (animator != null && hasDie) animator.SetTrigger("Die");
+            if (animator != null)
+            {
+                animator.transform.localPosition = visualBaseLocalPos;
+                if (hasDie) animator.SetTrigger("Die");
+            }
         }
 
         string msg;
         switch (reason)
         {
             case DeathReason.StaminaEmpty: msg = "You ran out of stamina before taming!"; break;
+            case DeathReason.CarnivoreKill: msg = "The carnivore stopped and killed you!"; break;
             case DeathReason.WallHit: msg = "You crashed into the wall!"; break;
             case DeathReason.Fell: msg = "You fell off the map!"; break;
             default: msg = "You missed the jump and fell!"; break;
@@ -973,7 +1448,7 @@ public class PlayerController : MonoBehaviour
             if (hasVerticalSpeed) animator.SetFloat("VerticalSpeed", velocity.y);
         }
 
-        bool grounded = cc.isGrounded || (flags & CollisionFlags.Below) != 0 || CheckGroundRaw();
+        bool grounded = cc.isGrounded || (flags & CollisionFlags.Below) != 0;
         if ((grounded && velocity.y <= 0f) || transform.position.y < fallDeathY)
             FinishDeadFall();
     }
@@ -982,9 +1457,16 @@ public class PlayerController : MonoBehaviour
     {
         deadFalling = false;
         velocity = Vector3.zero;
+        if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 10f,
+                            GroundCheckMask(), QueryTriggerInteraction.Ignore))
+        {
+            float standOffset = cc != null ? (cc.height * 0.5f - cc.center.y) : 1f;
+            transform.position = new Vector3(transform.position.x, hit.point.y + standOffset, transform.position.z);
+        }
         SetBodyActive(false);
         if (animator != null)
         {
+            animator.transform.localPosition = visualBaseLocalPos;
             if (hasIsJumping) animator.SetBool("IsJumping", false);
             if (hasIsFalling) animator.SetBool("IsFalling", false);
             if (hasIsGrounded) animator.SetBool("IsGrounded", true);
@@ -1024,9 +1506,12 @@ public class PlayerController : MonoBehaviour
     public bool SitOn(DinoMachine m)
     {
         if (State != PlayerState.Walking || isMountingMachine || m == null || m.seat == null) return false;
-        DismountPet();
+        // Chỉ được ngồi lên Dino Machine khi tay không cầm gì và không cưỡi gì
+        if (GameManager.Instance != null && GameManager.Instance.Inventory.Held != null) return false;
+        if (mount != null && mount.Mounted) return false;
         machine = m;
         m.SetOccupied(true);
+        waitMoveReleaseToStandUp = moveInput.sqrMagnitude > 0.05f;
         velocity = Vector3.zero;
         SetBodyActive(false);
         State = PlayerState.Sitting;
@@ -1088,14 +1573,17 @@ public class PlayerController : MonoBehaviour
 
     void UpdateSitting()
     {
+        if (waitMoveReleaseToStandUp && moveInput.sqrMagnitude <= 0.05f)
+            waitMoveReleaseToStandUp = false;
         if (isMountingMachine) return;
-        if (jumpPressed || moveInput.sqrMagnitude > 0.25f) StandUp();
+        if (jumpPressed || (!waitMoveReleaseToStandUp && moveInput.sqrMagnitude > 0.25f)) StandUp();
     }
 
     void StandUp()
     {
         if (sitMountRoutine != null) { StopCoroutine(sitMountRoutine); sitMountRoutine = null; }
         isMountingMachine = false;
+        waitMoveReleaseToStandUp = false;
         Vector3 exit = machine != null ? machine.ExitPosition : transform.position + Vector3.up;
         transform.SetParent(null);
         transform.SetPositionAndRotation(exit, Quaternion.identity);
@@ -1150,6 +1638,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    void ComputeRideBounce(float speedRatio, out Vector3 bobOffset, out Quaternion tiltRot)
+    {
+        rideBouncePhase += Time.deltaTime * rideBounceBaseFreq * speedRatio;
+        // |sin(phase)|^sharpness tạo đáy nhọn (gia tốc đạp nảy nhanh) và đỉnh tròn (lơ lửng nhẹ) tự nhiên hơn sin thuần
+        float stepWave = Mathf.Pow(Mathf.Abs(Mathf.Sin(rideBouncePhase)), Mathf.Clamp(rideBounceSharpness, 0.3f, 1.5f));
+        float bobY = (stepWave * 2f - 1f) * rideBounceHeight;
+        float bobX = Mathf.Sin(rideBouncePhase) * rideSwayX;
+        float pitch = Mathf.Cos(rideBouncePhase * 2f) * rideBounceTilt;
+        float roll = Mathf.Sin(rideBouncePhase) * (rideBounceTilt * 0.75f);
+
+        RideBounceOffset = new Vector2(bobX, bobY);
+        bobOffset = new Vector3(bobX, bobY, 0f);
+        tiltRot = Quaternion.Euler(pitch, 0f, roll);
+    }
+
     void UpdateVisualAndAnimation()
     {
         if (animator == null) return;
@@ -1159,43 +1662,86 @@ public class PlayerController : MonoBehaviour
         bool ridingOrSitting = State == PlayerState.Riding || (State == PlayerState.Sitting && !isMountingMachine) || mountedOnPet;
 
         // 1. Vị trí & góc xoay của Model
-        if (State == PlayerState.Riding || State == PlayerState.Sitting)
+        if (State == PlayerState.Riding && currentDino != null)
         {
+            if (currentDino.CurrentSpeed > 0.1f)
+            {
+                float speedRatio = Mathf.Clamp(currentDino.CurrentSpeed / Mathf.Max(1f, currentDino.animReferenceSpeed), 0.4f, 3f);
+                ComputeRideBounce(speedRatio, out Vector3 bobOffset, out Quaternion tiltRot);
+                visual.localPosition = visualBaseLocalPos + ridingModelOffset + bobOffset;
+                visual.localRotation = tiltRot;
+            }
+            else
+            {
+                RideBounceOffset = Vector2.zero;
+                visual.localPosition = visualBaseLocalPos + ridingModelOffset;
+                visual.localRotation = Quaternion.identity;
+            }
+        }
+        else if (State == PlayerState.Riding || State == PlayerState.Sitting)
+        {
+            RideBounceOffset = Vector2.zero;
             visual.localPosition = visualBaseLocalPos + ridingModelOffset;
             if (!isMountingMachine) visual.localRotation = Quaternion.identity;
         }
         else if (State == PlayerState.Catching)
         {
+            RideBounceOffset = Vector2.zero;
             visual.localPosition = visualBaseLocalPos;
         }
         else
         {
             float dipY = 0f;
-            if (landDipTimer > 0f && landDipDuration > 0.001f)
+            if (!mountedOnPet && landDipTimer > 0f && landDipDuration > 0.001f)
             {
                 landDipTimer = Mathf.Max(0f, landDipTimer - Time.deltaTime);
                 float t = 1f - (landDipTimer / landDipDuration);
                 dipY -= Mathf.Sin(t * Mathf.PI) * landDipDepth;
             }
-            Vector3 basePos = mountedOnPet ? (visualBaseLocalPos + ridingModelOffset) : visualBaseLocalPos;
-            visual.localPosition = basePos + new Vector3(0f, dipY, 0f);
-            Vector3 flatMove = (State == PlayerState.Jumping && steerWithCamera) || (State == PlayerState.Walking && RunActive)
-                ? new Vector3(velocity.x, 0f, velocity.z)
-                : new Vector3(moveInput.x, 0f, moveInput.z);
-            if (flatMove.sqrMagnitude > 0.001f)
+            if (mountedOnPet)
             {
-                Quaternion targetRot = Quaternion.LookRotation(flatMove);
-                visual.rotation = Quaternion.Slerp(visual.rotation, targetRot, modelTurnSpeed * Time.deltaTime);
+                float petSpeed = new Vector2(velocity.x, velocity.z).magnitude;
+                Quaternion tiltRot = Quaternion.identity;
+                if (State == PlayerState.Walking && petSpeed > 0.5f)
+                {
+                    float speedRatio = Mathf.Clamp(petSpeed / 15f, 0.4f, 3f);
+                    ComputeRideBounce(speedRatio, out _, out tiltRot);
+                }
+                else
+                {
+                    RideBounceOffset = Vector2.zero;
+                }
+                visual.localPosition = visualBaseLocalPos + ridingModelOffset;
+                visual.rotation = mount.VisualRotation * tiltRot;
+            }
+            else
+            {
+                RideBounceOffset = Vector2.zero;
+                visual.localPosition = visualBaseLocalPos + new Vector3(0f, dipY, 0f);
+                Vector3 flatMove = (State == PlayerState.Jumping && steerWithCamera) || (State == PlayerState.Walking && RunActive)
+                    ? new Vector3(velocity.x, 0f, velocity.z)
+                    : new Vector3(moveInput.x, 0f, moveInput.z);
+                if (flatMove.sqrMagnitude > 0.001f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(flatMove);
+                    visual.rotation = Quaternion.Slerp(visual.rotation, targetRot, modelTurnSpeed * Time.deltaTime);
+                }
             }
         }
 
         // 2. Cập nhật tham số Animator (chỉ gửi các tham số đã tạo trong Animator Controller)
-        bool isRunning = State == PlayerState.Walking && (moveInput.sqrMagnitude > 0.01f || RunActive) && !mountedOnPet;
-        bool isJumping = State == PlayerState.Jumping || State == PlayerState.Catching || isMountingMachine;
-        bool isGrounded = State == PlayerState.Walking || State == PlayerState.Riding || (State == PlayerState.Sitting && !isMountingMachine);
-        bool isFalling = State == PlayerState.Jumping && velocity.y <= 1.0f;
-        bool isHolding = GameManager.Instance != null && GameManager.Instance.Inventory.Held != null && !ridingOrSitting;
+        bool hasMoveAnim = moveInput.sqrMagnitude > 0.01f || (Time.time - lastMoveInputTime) <= runStopGrace;
+        bool isRunning = State == PlayerState.Walking && (hasMoveAnim || RunActive) && !mountedOnPet;
+        bool isJumping = !mountedOnPet && (State == PlayerState.Jumping || State == PlayerState.Catching || isMountingMachine);
+        bool isGrounded = State == PlayerState.Walking || State == PlayerState.Riding || (State == PlayerState.Sitting && !isMountingMachine) || mountedOnPet;
+        float fallThreshold = GetJumpVelocity(RunActive) * 0.35f;
+        bool isFalling = !mountedOnPet && State == PlayerState.Jumping && velocity.y <= fallThreshold;
+        OwnedDino heldDino = GameManager.Instance != null ? GameManager.Instance.Inventory.Held : null;
+        bool inWildRideOrSit = State == PlayerState.Riding || (State == PlayerState.Sitting && !isMountingMachine);
+        bool isHolding = heldDino != null && !RunActive && !inWildRideOrSit && State != PlayerState.Catching && State != PlayerState.Dead;
         bool isLassoing = State == PlayerState.Catching;
+
+        UpdateHoldVisual(heldDino, isHolding);
 
         if (hasIsRunning) animator.SetBool("IsRunning", isRunning);
         if (hasIsJumping) animator.SetBool("IsJumping", isJumping);
@@ -1210,11 +1756,22 @@ public class PlayerController : MonoBehaviour
 
     void LateUpdate()
     {
-        bool inAir = State == PlayerState.Jumping || State == PlayerState.Catching ||
-                     (State == PlayerState.Dead && deadFalling);
+        bool mountedOnPet = mount != null && mount.Mounted;
+        if (State != PlayerState.Riding && State != PlayerState.Catching && State != PlayerState.Dead &&
+            animator != null && mount != null && mount.TryGetSeatWorldPosition(out Vector3 seatWorldPos))
+        {
+            Vector3 bob = new Vector3(RideBounceOffset.x, RideBounceOffset.y, 0f);
+            animator.transform.position = seatWorldPos + transform.TransformVector(visualBaseLocalPos + ridingModelOffset + bob);
+        }
+
+        bool inAir = !mountedOnPet && (
+                     (State == PlayerState.Jumping && velocity.y <= GetJumpVelocity(RunActive) * 0.5f) ||
+                     State == PlayerState.Catching ||
+                     (State == PlayerState.Dead && deadFalling));
         float dt = Time.deltaTime;
-        airLegBlend = Mathf.MoveTowards(airLegBlend, inAir ? airLegRelax : 0f, 8f * dt);
-        airFootBlend = Mathf.MoveTowards(airFootBlend, inAir ? airFootSync : 0f, 8f * dt);
+        float rate = inAir ? 8f : 14f;
+        airLegBlend = Mathf.MoveTowards(airLegBlend, inAir ? airLegRelax : 0f, rate * dt);
+        airFootBlend = Mathf.MoveTowards(airFootBlend, inAir ? airFootSync : 0f, rate * dt);
 
         if (airLegBlend > 0.001f)
         {
@@ -1231,6 +1788,360 @@ public class PlayerController : MonoBehaviour
                 leftFoot.localRotation = Quaternion.Slerp(leftFoot.localRotation, leftFootRestRot * pitchRot, airFootBlend);
             if (rightFoot != null)
                 rightFoot.localRotation = Quaternion.Slerp(rightFoot.localRotation, rightFootRestRot * pitchRot, airFootBlend);
+        }
+
+        // Tay phải quay dây thòng lọng khi ở trong đường chạy (kể cả lúc đang cưỡi Dino); chỉ tắt khi ra khỏi RunZone hoặc chết/ngồi máy
+        bool twirlLasso = RunActive && State != PlayerState.Dead && State != PlayerState.Sitting && State != PlayerState.Catching;
+        bool aimCatch = State == PlayerState.Catching && currentDino != null && currentDino.seat != null;
+        if (twirlLasso) lassoSpinPhase += dt * lassoSpinSpeed;
+        lassoArmBlend = Mathf.MoveTowards(lassoArmBlend, (twirlLasso || aimCatch) ? 1f : 0f, 10f * dt);
+
+        if (lassoArmBlend > 0.001f && animator != null && rightUpperArm != null && rightLowerArm != null && ropeHand != null)
+        {
+            if (aimCatch && hasLassoBaseRot)
+            {
+                Quaternion animShoulder = rightShoulder != null ? rightShoulder.rotation : Quaternion.identity;
+                Quaternion animUpper = rightUpperArm.rotation;
+                Quaternion animLower = rightLowerArm.rotation;
+                Quaternion animHand = ropeHand.rotation;
+
+                if (rightShoulder != null) rightShoulder.localRotation = lassoShoulderBaseLocalRot;
+                rightUpperArm.localRotation = lassoArmBaseLocalRot;
+                rightLowerArm.localRotation = lassoLowerArmBaseLocalRot;
+                ropeHand.localRotation = lassoHandBaseLocalRot;
+
+                Transform root = animator.transform;
+                Vector3 catchTarget = currentDino.seat != null
+                    ? currentDino.seat.position
+                    : currentDino.transform.TransformPoint(currentDino.bodyCenter);
+                Vector3 toTarget = catchTarget - rightUpperArm.position;
+                toTarget = Vector3.Dot(toTarget, root.forward) > 0.1f ? toTarget.normalized : root.forward;
+
+                Vector3 upperGoal = (toTarget + root.right * catchArmOutward + root.up * catchArmUpward).normalized;
+                Vector3 lowerGoal = (toTarget + root.right * (catchArmOutward * 0.45f) + root.up * (catchArmUpward * 0.5f)).normalized;
+
+                if (rightShoulder != null)
+                {
+                    Vector3 shDir = (rightUpperArm.position - rightShoulder.position).normalized;
+                    if (shDir.sqrMagnitude > 0.0001f)
+                        rightShoulder.rotation = Quaternion.Slerp(rightShoulder.rotation,
+                            Quaternion.FromToRotation(shDir, upperGoal) * rightShoulder.rotation, lassoShoulderLiftWeight);
+                    rightShoulder.localRotation = rightShoulder.localRotation * Quaternion.Euler(lassoShoulderOffset);
+                    rightShoulder.localPosition = Vector3.Lerp(lassoShoulderBaseLocalPos,
+                        lassoShoulderBaseLocalPos + lassoShoulderPosOffset, lassoArmBlend);
+                }
+
+                Vector3 curUpper = (rightLowerArm.position - rightUpperArm.position).normalized;
+                if (curUpper.sqrMagnitude > 0.0001f)
+                {
+                    rightUpperArm.rotation = Quaternion.FromToRotation(curUpper, upperGoal) * rightUpperArm.rotation;
+                    rightUpperArm.rotation = Quaternion.AngleAxis(lassoUpperArmTwist, upperGoal) * rightUpperArm.rotation;
+                }
+
+                Vector3 curLower = (ropeHand.position - rightLowerArm.position).normalized;
+                if (curLower.sqrMagnitude > 0.0001f)
+                {
+                    rightLowerArm.rotation = Quaternion.FromToRotation(curLower, lowerGoal) * rightLowerArm.rotation;
+                    rightLowerArm.rotation = Quaternion.AngleAxis(lassoForearmTwist, lowerGoal) * rightLowerArm.rotation;
+                }
+
+                ropeHand.localRotation = ropeHand.localRotation * Quaternion.Euler(lassoHandAngles);
+
+                if (lassoArmBlend < 0.999f)
+                {
+                    if (rightShoulder != null) rightShoulder.rotation = Quaternion.Slerp(animShoulder, rightShoulder.rotation, lassoArmBlend);
+                    rightUpperArm.rotation = Quaternion.Slerp(animUpper, rightUpperArm.rotation, lassoArmBlend);
+                    rightLowerArm.rotation = Quaternion.Slerp(animLower, rightLowerArm.rotation, lassoArmBlend);
+                    ropeHand.rotation = Quaternion.Slerp(animHand, ropeHand.rotation, lassoArmBlend);
+                }
+            }
+            else if (aimCatch)
+            {
+                Transform root = animator.transform;
+                Vector3 catchTarget = currentDino.seat != null
+                    ? currentDino.seat.position
+                    : currentDino.transform.TransformPoint(currentDino.bodyCenter);
+                Vector3 toTarget = catchTarget - rightUpperArm.position;
+                toTarget = Vector3.Dot(toTarget, root.forward) > 0.1f ? toTarget.normalized : root.forward;
+                Vector3 armDir = (toTarget + root.right * catchArmOutward + root.up * catchArmUpward).normalized;
+                Vector3 curUpper = (rightLowerArm.position - rightUpperArm.position).normalized;
+                if (curUpper.sqrMagnitude > 0.0001f)
+                {
+                    Quaternion targetUpperRot = Quaternion.FromToRotation(curUpper, armDir) * rightUpperArm.rotation;
+                    rightUpperArm.rotation = Quaternion.Slerp(rightUpperArm.rotation, targetUpperRot, lassoArmBlend);
+                }
+            }
+            else if (hasLassoBaseRot)
+            {
+                Quaternion animShoulder = rightShoulder != null ? rightShoulder.rotation : Quaternion.identity;
+                Quaternion animUpper = rightUpperArm.rotation;
+                Quaternion animLower = rightLowerArm.rotation;
+                Quaternion animHand = ropeHand.rotation;
+
+                // Đưa về dáng T-pose gốc để tính khớp chuẩn xác mỗi frame (chỉnh Inspector ăn ngay trong Play Mode)
+                if (rightShoulder != null) rightShoulder.localRotation = lassoShoulderBaseLocalRot;
+                rightUpperArm.localRotation = lassoArmBaseLocalRot;
+                rightLowerArm.localRotation = lassoLowerArmBaseLocalRot;
+                ropeHand.localRotation = lassoHandBaseLocalRot;
+
+                Transform root = animator.transform;
+                Vector3 upperGoal = root.TransformDirection(lassoUpperArmDir.sqrMagnitude > 0.001f ? lassoUpperArmDir.normalized : new Vector3(0.8f, 0.25f, 0.35f));
+                float liftBob = Mathf.Sin(lassoSpinPhase) * lassoBobAmplitude;
+                Vector3 lowerGoal = Quaternion.AngleAxis(liftBob, root.forward)
+                                  * root.TransformDirection(lassoForearmDir.sqrMagnitude > 0.001f ? lassoForearmDir.normalized : new Vector3(0.3f, 0.9f, 0.2f));
+
+                // 1. Bả vai (RightShoulder): nâng nhẹ theo hướng bắp tay + góc bù + dịch vị trí làm phồng vai
+                if (rightShoulder != null)
+                {
+                    Vector3 shDir = (rightUpperArm.position - rightShoulder.position).normalized;
+                    if (shDir.sqrMagnitude > 0.0001f)
+                        rightShoulder.rotation = Quaternion.Slerp(rightShoulder.rotation,
+                            Quaternion.FromToRotation(shDir, upperGoal) * rightShoulder.rotation, lassoShoulderLiftWeight);
+                    rightShoulder.localRotation = rightShoulder.localRotation * Quaternion.Euler(lassoShoulderOffset);
+                    rightShoulder.localPosition = Vector3.Lerp(lassoShoulderBaseLocalPos,
+                        lassoShoulderBaseLocalPos + lassoShoulderPosOffset, lassoArmBlend);
+                }
+
+                // 2. Bắp tay trên (RightUpperArm): đưa sang phải-trước vừa phải + xoay trục để cùi chỏ hướng xuống
+                Vector3 curUpper = (rightLowerArm.position - rightUpperArm.position).normalized;
+                if (curUpper.sqrMagnitude > 0.0001f)
+                {
+                    rightUpperArm.rotation = Quaternion.FromToRotation(curUpper, upperGoal) * rightUpperArm.rotation;
+                    rightUpperArm.rotation = Quaternion.AngleAxis(lassoUpperArmTwist, upperGoal) * rightUpperArm.rotation;
+                }
+
+                // 3. Cẳng tay / Khuỷu tay (RightLowerArm): gập khuỷu tay hướng lên trên (dáng chữ L tự nhiên) + xoay trục hướng lòng bàn tay vào trong
+                Vector3 curLower = (ropeHand.position - rightLowerArm.position).normalized;
+                if (curLower.sqrMagnitude > 0.0001f)
+                {
+                    rightLowerArm.rotation = Quaternion.FromToRotation(curLower, lowerGoal) * rightLowerArm.rotation;
+                    rightLowerArm.rotation = Quaternion.AngleAxis(lassoForearmTwist, lowerGoal) * rightLowerArm.rotation;
+                }
+
+                // 4. Bàn tay / Cổ tay (RightHand): xoay tinh chỉnh 3 trục
+                ropeHand.localRotation = ropeHand.localRotation * Quaternion.Euler(lassoHandAngles);
+
+                if (lassoArmBlend < 0.999f)
+                {
+                    if (rightShoulder != null) rightShoulder.rotation = Quaternion.Slerp(animShoulder, rightShoulder.rotation, lassoArmBlend);
+                    rightUpperArm.rotation = Quaternion.Slerp(animUpper, rightUpperArm.rotation, lassoArmBlend);
+                    rightLowerArm.rotation = Quaternion.Slerp(animLower, rightLowerArm.rotation, lassoArmBlend);
+                    ropeHand.rotation = Quaternion.Slerp(animHand, ropeHand.rotation, lassoArmBlend);
+                }
+            }
+
+            if (ropeGrip != null)
+                ropeGrip.localPosition = lassoGripLocalOffset;
+        }
+        else if (hasLassoBaseRot && rightShoulder != null)
+        {
+            rightShoulder.localPosition = lassoShoulderBaseLocalPos;
+        }
+
+        if (preview != null)
+            preview.SetTwirlingLasso(ropeGrip != null ? ropeGrip : (ropeHand != null ? ropeHand : transform),
+                                     twirlLasso, lassoSpinPhase, animator != null ? animator.transform : transform);
+
+        // 2 tay giơ lên vác Dino trên đầu (dùng chính dáng tay quăng dây đối xứng trái/phải)
+        bool carrying = !twirlLasso && !aimCatch && currentHoldVisualDino != null && holdVisualRoot != null;
+        holdArmBlend = Mathf.MoveTowards(holdArmBlend, carrying ? 1f : 0f, 12f * dt);
+        if (holdArmBlend > 0.001f && lassoArmBlend <= 0.01f && animator != null)
+        {
+            Transform root = animator.transform;
+            if (hasLeftArmBaseRot)
+                PoseCarryArmAsLasso(leftShoulder, leftUpperArm, leftLowerArm, leftHand,
+                                    leftShoulderBaseLocalRot, leftShoulderBaseLocalPos, leftArmBaseLocalRot, leftLowerArmBaseLocalRot, leftHandBaseLocalRot,
+                                    -1f, root, holdArmBlend);
+            if (hasLassoBaseRot && ropeHand != null)
+                PoseCarryArmAsLasso(rightShoulder, rightUpperArm, rightLowerArm, ropeHand,
+                                    lassoShoulderBaseLocalRot, lassoShoulderBaseLocalPos, lassoArmBaseLocalRot, lassoLowerArmBaseLocalRot, lassoHandBaseLocalRot,
+                                    1f, root, holdArmBlend);
+        }
+        else if (hasLeftArmBaseRot && leftShoulder != null)
+        {
+            leftShoulder.localPosition = leftShoulderBaseLocalPos;
+        }
+
+        // Bám Dino đang vác cân bằng giữa 2 tay + rung lắc tự nhiên theo nhịp di chuyển
+        if (holdVisualRoot != null && animator != null)
+        {
+            Transform root = animator.transform;
+            Vector3 perDinoPos = (currentHoldVisualDino != null && currentHoldVisualDino.data != null)
+                ? currentHoldVisualDino.data.holdPositionOffset : Vector3.zero;
+            Vector3 perDinoRot = (currentHoldVisualDino != null && currentHoldVisualDino.data != null)
+                ? currentHoldVisualDino.data.holdRotationOffset : Vector3.zero;
+            Vector3 baseHoldPos = holdDinoOffset + perDinoPos;
+            Quaternion baseHoldRot = Quaternion.Euler(holdDinoEuler) * Quaternion.Euler(perDinoRot);
+
+            if (leftHand != null && ropeHand != null)
+            {
+                Vector3 handsMidLocal = root.InverseTransformPoint((leftHand.position + ropeHand.position) * 0.5f);
+                if (!hasCarryIdleRef && holdArmBlend >= 0.99f && State == PlayerState.Walking && moveInput.sqrMagnitude < 0.01f)
+                {
+                    carryHandsRestLocal = handsMidLocal;
+                    if (carryBone != null)
+                        carryBoneRestLocalRot = Quaternion.Inverse(root.rotation) * carryBone.rotation;
+                    hasCarryIdleRef = true;
+                }
+
+                Vector3 posDelta = hasCarryIdleRef ? (handsMidLocal - carryHandsRestLocal) : Vector3.zero;
+                posDelta.x = Mathf.Lerp(posDelta.x, 0f, 0.35f);
+                holdVisualRoot.transform.localPosition = baseHoldPos + posDelta * holdBoneSwayWeight;
+
+                Vector3 spanLocal = root.InverseTransformDirection(ropeHand.position - leftHand.position);
+                float rollDeg = Mathf.Clamp(Mathf.Atan2(spanLocal.y, Mathf.Max(0.1f, spanLocal.x)) * Mathf.Rad2Deg * holdBoneSwayWeight, -12f, 12f);
+                float pitchDeg = 0f;
+                if (holdFollowPitch && hasCarryIdleRef && carryBone != null)
+                {
+                    Quaternion boneDelta = (Quaternion.Inverse(root.rotation) * carryBone.rotation) * Quaternion.Inverse(carryBoneRestLocalRot);
+                    pitchDeg = Mathf.Clamp(Mathf.DeltaAngle(0f, boneDelta.eulerAngles.x) * holdBoneSwayWeight, -holdMaxPitchAngle, holdMaxPitchAngle);
+                }
+                holdVisualRoot.transform.localRotation = Quaternion.Euler(pitchDeg, 0f, rollDeg) * baseHoldRot;
+            }
+            else if (hasCarryBone && carryBone != null)
+            {
+                Vector3 curLocalBonePos = root.InverseTransformPoint(carryBone.position);
+                Vector3 boneDeltaLocal = curLocalBonePos - carryBoneRestLocalOffset;
+                holdVisualRoot.transform.localPosition = baseHoldPos + boneDeltaLocal * holdBoneSwayWeight;
+                holdVisualRoot.transform.localRotation = baseHoldRot;
+            }
+            else
+            {
+                holdVisualRoot.transform.localPosition = baseHoldPos;
+                holdVisualRoot.transform.localRotation = baseHoldRot;
+            }
+        }
+    }
+
+    void UpdateHoldVisual(OwnedDino held, bool shouldCarry)
+    {
+        if (!shouldCarry || held == null || held.data == null || animator == null)
+        {
+            if (holdVisualRoot != null)
+            {
+                Destroy(holdVisualRoot);
+                holdVisualRoot = null;
+            }
+            currentHoldVisualDino = null;
+            hasCarryIdleRef = false;
+            return;
+        }
+
+        if (currentHoldVisualDino == held && holdVisualRoot != null) return;
+
+        if (holdVisualRoot != null) Destroy(holdVisualRoot);
+        currentHoldVisualDino = held;
+        hasCarryIdleRef = false;
+
+        holdVisualRoot = new GameObject("HoldDinoVisual");
+        holdVisualRoot.transform.SetParent(animator.transform, false);
+        holdVisualRoot.transform.localPosition = holdDinoOffset + held.data.holdPositionOffset;
+        holdVisualRoot.transform.localRotation = Quaternion.Euler(holdDinoEuler) * Quaternion.Euler(held.data.holdRotationOffset);
+
+        GameObject model = DinoView.BuildModel(holdVisualRoot.transform, held, new Vector3(1.1f, 1.4f, 2.2f));
+        float labelTopY = holdLabelHeight;
+        if (model != null)
+        {
+            Collider[] cols = model.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < cols.Length; i++)
+                if (cols[i] != null) cols[i].enabled = false;
+
+            Animator mAnim = model.GetComponentInChildren<Animator>();
+            if (mAnim != null)
+            {
+                mAnim.SetBool("IsMoving", false);
+                mAnim.Update(0f); // Ép áp dụng pose Idle ngay trước khi đo Bounds (tránh đo nhầm Bind Pose)
+                if (freezeHoldDinoAnimator) mAnim.enabled = false;
+            }
+
+            // Giữ đúng 100% kích thước thật của model Dino (chỉ nhân holdDinoScaleMultiplier nếu bạn chỉnh khác 1)
+            model.transform.localScale *= Mathf.Max(0.1f, holdDinoScaleMultiplier);
+
+            Renderer[] rends = model.GetComponentsInChildren<Renderer>(true);
+            if (rends != null && rends.Length > 0)
+            {
+                bool hasBounds = false;
+                Bounds b = default(Bounds);
+                for (int i = 0; i < rends.Length; i++)
+                {
+                    if (rends[i] == null || rends[i] is ParticleSystemRenderer) continue;
+                    if (!hasBounds) { b = rends[i].bounds; hasBounds = true; }
+                    else b.Encapsulate(rends[i].bounds);
+                }
+
+                if (hasBounds)
+                {
+                    // Đặt đáy chân/bụng Dino chạm đúng tầm 2 bàn tay nâng trên đầu
+                    float bottomOffset = holdVisualRoot.transform.position.y - b.min.y;
+                    model.transform.position += Vector3.up * bottomOffset;
+                    labelTopY = b.size.y + holdLabelHeight;
+                }
+            }
+        }
+
+        if (GameManager.Instance != null)
+        {
+            string lbl = DinoView.BuildWorldLabelText(held, false, 0f);
+            GameManager.Instance.CreateLabel(holdVisualRoot.transform, new Vector3(0f, labelTopY, 0f), lbl);
+        }
+    }
+
+    void PoseCarryArmAsLasso(Transform shoulder, Transform upper, Transform lower, Transform hand,
+                             Quaternion baseSh, Vector3 baseShPos, Quaternion baseUp, Quaternion baseLow, Quaternion baseHand,
+                             float sideSign, Transform root, float blend)
+    {
+        if (upper == null || lower == null || hand == null) return;
+
+        Quaternion animSh = shoulder != null ? shoulder.rotation : Quaternion.identity;
+        Quaternion animUp = upper.rotation;
+        Quaternion animLow = lower.rotation;
+        Quaternion animHand = hand.rotation;
+
+        if (shoulder != null) shoulder.localRotation = baseSh;
+        upper.localRotation = baseUp;
+        lower.localRotation = baseLow;
+        hand.localRotation = baseHand;
+
+        Vector3 rawUp = lassoUpperArmDir.sqrMagnitude > 0.001f ? lassoUpperArmDir.normalized : new Vector3(0.8f, 0.25f, 0.35f);
+        Vector3 rawLow = lassoForearmDir.sqrMagnitude > 0.001f ? lassoForearmDir.normalized : new Vector3(0.3f, 0.9f, 0.2f);
+        Vector3 upperGoal = root.TransformDirection(new Vector3(rawUp.x * sideSign, rawUp.y, rawUp.z).normalized);
+        Vector3 lowerGoal = root.TransformDirection(new Vector3(rawLow.x * sideSign, rawLow.y, rawLow.z).normalized);
+
+        if (shoulder != null)
+        {
+            Vector3 shDir = (upper.position - shoulder.position).normalized;
+            if (shDir.sqrMagnitude > 0.0001f)
+                shoulder.rotation = Quaternion.Slerp(shoulder.rotation,
+                    Quaternion.FromToRotation(shDir, upperGoal) * shoulder.rotation, lassoShoulderLiftWeight);
+            Vector3 shEuler = new Vector3(lassoShoulderOffset.x, lassoShoulderOffset.y * sideSign, lassoShoulderOffset.z * sideSign);
+            shoulder.localRotation = shoulder.localRotation * Quaternion.Euler(shEuler);
+            Vector3 shPosOff = new Vector3(lassoShoulderPosOffset.x * sideSign, lassoShoulderPosOffset.y, lassoShoulderPosOffset.z);
+            shoulder.localPosition = Vector3.Lerp(baseShPos, baseShPos + shPosOff, blend);
+        }
+
+        Vector3 curUpper = (lower.position - upper.position).normalized;
+        if (curUpper.sqrMagnitude > 0.0001f)
+        {
+            upper.rotation = Quaternion.FromToRotation(curUpper, upperGoal) * upper.rotation;
+            upper.rotation = Quaternion.AngleAxis(lassoUpperArmTwist * sideSign, upperGoal) * upper.rotation;
+        }
+
+        Vector3 curLower = (hand.position - lower.position).normalized;
+        if (curLower.sqrMagnitude > 0.0001f)
+        {
+            lower.rotation = Quaternion.FromToRotation(curLower, lowerGoal) * lower.rotation;
+            lower.rotation = Quaternion.AngleAxis(lassoForearmTwist * sideSign, lowerGoal) * lower.rotation;
+        }
+
+        Vector3 handEuler = new Vector3(lassoHandAngles.x, lassoHandAngles.y * sideSign, lassoHandAngles.z * sideSign);
+        hand.localRotation = hand.localRotation * Quaternion.Euler(handEuler);
+
+        if (blend < 0.999f)
+        {
+            if (shoulder != null) shoulder.rotation = Quaternion.Slerp(animSh, shoulder.rotation, blend);
+            upper.rotation = Quaternion.Slerp(animUp, upper.rotation, blend);
+            lower.rotation = Quaternion.Slerp(animLow, lower.rotation, blend);
+            hand.rotation = Quaternion.Slerp(animHand, hand.rotation, blend);
         }
     }
 }

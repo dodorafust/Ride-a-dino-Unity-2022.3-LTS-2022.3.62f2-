@@ -10,6 +10,7 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
     [Header("Vùng chuồng (Collider, Is Trigger)")]
     public Collider area;
     public Vector3 labelOffset = new Vector3(0f, 4.5f, 0f);
+    public bool showFloatingLabel = true;
 
     [Header("Level / Slots")]
     public int level = 1;
@@ -23,7 +24,11 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
     public LevelVisual[] levelVisuals;
 
     [Header("Economy")]
-    public bool autoDeposit = false;     // true: tiền vào ví liên tục, không cần bước vào chuồng
+    public bool autoDeposit = true;      // true: tiền vào ví realtime bất cứ đâu, không cần bấm Collect hay vào chuồng
+
+    [Header("Vị trí chữ & tiền trên đầu Dino trong chuồng")]
+    public float dinoLabelHeadPadding = 0.6f;
+    public float dinoMoneyPopupHeadPadding = 0.35f;
 
     // ---- IUpgradable
     public string UpgradeName { get { return "PEN"; } }
@@ -78,11 +83,21 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
         ring.SetPosition(2, new Vector3(b.max.x - m, y, b.max.z - m));
         ring.SetPosition(3, new Vector3(b.max.x - m, y, b.min.z + m));
 
-        if (GameManager.Instance != null)
+        if (showFloatingLabel && GameManager.Instance != null)
             label = GameManager.Instance.CreateLabel(transform, labelOffset, "");
         LevelVisual.Apply(levelVisuals, level);
         RefreshLabel();
     }
+
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        if (Application.isPlaying) return;
+        UpgradeSign[] signs = FindObjectsOfType<UpgradeSign>(true);
+        for (int i = 0; i < signs.Length; i++)
+            if (signs[i] != null && signs[i].target == this) signs[i].RefreshPreviewInEditor();
+    }
+#endif
 
     void Update()
     {
@@ -101,7 +116,23 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
             }
         }
 
-        if (IncomePerSecond > 0.0) Pending += IncomePerSecond * Time.deltaTime;
+        if (IncomePerSecond > 0.0)
+        {
+            double earned = IncomePerSecond * Time.deltaTime;
+            if (autoDeposit && GameManager.Instance != null)
+            {
+                if (Pending > 0.0)
+                {
+                    earned += Pending;
+                    Pending = 0.0;
+                }
+                GameManager.Instance.AddCash(earned);
+            }
+            else
+            {
+                Pending += earned;
+            }
+        }
 
         labelTimer += Time.deltaTime;
         if (labelTimer >= 0.25f)
@@ -115,9 +146,9 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
     void RefreshLabel()
     {
         if (label == null) return;
-        label.SetText("PEN  Lv " + level + "\n" + active.Count + "/" + Slots + " slots\n" +
-                      "<color=#55FF55>$" + NumberFormat.Short(IncomePerSecond) + "/s</color>   " +
-                      "Stored: $" + NumberFormat.Short(Pending));
+        string incomeLine = "<color=#55FF55>+$" + NumberFormat.Short(IncomePerSecond) + "/s</color>";
+        if (!autoDeposit) incomeLine += "   Stored: $" + NumberFormat.Short(Pending);
+        label.SetText("PEN  Lv " + level + "\n" + active.Count + "/" + Slots + " slots\n" + incomeLine);
     }
 
     void RecalcIncome()
@@ -170,6 +201,8 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
         var go = new GameObject("PenDino_" + d.Title);
         go.transform.SetParent(transform, true);
         PenDino pd = go.AddComponent<PenDino>();
+        pd.labelHeadPadding = dinoLabelHeadPadding;
+        pd.moneyPopupHeadPadding = dinoMoneyPopupHeadPadding;
         pd.Init(d, this);
         visuals[d] = pd;
 
@@ -234,10 +267,10 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
         return d != null && visuals.TryGetValue(d, out pd) && pd != null;
     }
 
-    public void SetRidden(OwnedDino d, bool ridden)
+    public void SetRidden(OwnedDino d, bool ridden, Vector3? walkBackFromPos = null, Quaternion? startRot = null)
     {
         PenDino pd;
-        if (TryGetVisual(d, out pd)) pd.SetRidden(ridden);
+        if (TryGetVisual(d, out pd)) pd.SetRidden(ridden, walkBackFromPos, startRot);
     }
 
     // Dino trong chuồng gần vị trí pos nhất (bỏ qua con đang được cưỡi)

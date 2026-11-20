@@ -18,9 +18,12 @@ public class HudController : MonoBehaviour
     public TMP_Text staminaText;
     public TMP_Text cashText;
 
-    [Header("Hotbar: 1 ô cưỡi + 6 ô Dino")]
+    [Header("Hotbar: 6 ô Dino + nút Q (Ride) tách riêng")]
     public HotbarSlotUI rideSlot;
     public HotbarSlotUI[] slots;
+    public bool detachRideSlotFromHotbar = true;
+    public Vector2 standaloneRidePos = new Vector2(-450f, 16f);
+    public Vector2 standaloneRideSize = new Vector2(104f, 104f);
 
     [Header("Nút")]
     public Button penButton;             // nút quản lý chuồng (bên phải)
@@ -31,21 +34,30 @@ public class HudController : MonoBehaviour
     [Header("Bảng")]
     public InventoryPopup inventoryPopup;
     public PenPanel penPanel;
+    public SellDinosPopup sellDinosPopup;
 
     [Header("Cưỡi Dino hoang")]
     public RideRingsUI rings;
     public WorldPromptUI ridePrompt;
+    public TameSecuredUI tameSecuredUI;
+
+    [Header("Thanh tiến trình & Banner Biome")]
+    public BiomeHudUI biomeHud;
 
     [Header("Thông báo")]
     public TMP_Text toastText;
     public GameObject depositHint;       // "GO TO YOUR PEN TO DEPOSIT"
 
-    [Header("Dev Cheat (Test Mobile)")]
+    [Header("Dev Cheat (F1..F6 trên màn hình)")]
     public bool showDevCheatButtons = true;
+    public double cheatCashAmount = 1000;
     public float cheatStaminaAmount = 10f;
-    public Button cheatStaminaButton;                 // tùy chọn: kéo nút tự thiết kế vào, để trống thì tự tạo
-    public Vector2 cheatButtonPos = new Vector2(24f, -150f);
-    public Vector2 cheatButtonSize = new Vector2(170f, 46f);
+    public Button cheatStaminaButton;                 // tùy chọn: để trống sẽ tự tạo đủ cụm nút F1..F6
+    public Vector2 cheatButtonPos = new Vector2(1690f, -40f);
+    public Vector2 cheatButtonSize = new Vector2(200f, 52f);
+    public float cheatButtonSpacing = 8f;
+    [Tooltip("Dịch vị trí riêng cho từng nút F1..F6 (tùy chọn).")]
+    public Vector2[] cheatButtonOffsets = new Vector2[6];
 
     GameManager gm;
     PlayerController player;
@@ -54,6 +66,8 @@ public class HudController : MonoBehaviour
     Pen pen;
     Camera cam;
     float toastUntil;
+    readonly RectTransform[] spawnedCheatRects = new RectTransform[6];
+    readonly TextMeshProUGUI[] spawnedCheatLabels = new TextMeshProUGUI[6];
 
     void Awake() { Instance = this; }
 
@@ -73,15 +87,44 @@ public class HudController : MonoBehaviour
         }
         if (player != null) ride = player.GetComponent<RideSession>();
 
-        if (penButton != null && penPanel != null) penButton.onClick.AddListener(penPanel.Toggle);
-        if (inventoryButton != null && inventoryPopup != null) inventoryButton.onClick.AddListener(inventoryPopup.Toggle);
+        if (penButton != null && penPanel != null)
+        {
+            penButton.onClick.AddListener(penPanel.Toggle);
+            UIEffectUtil.AttachButtonBounce(this, penButton);
+        }
+        if (inventoryButton != null && inventoryPopup != null)
+        {
+            inventoryButton.onClick.AddListener(inventoryPopup.Toggle);
+            UIEffectUtil.AttachButtonBounce(this, inventoryButton);
+        }
         if (shopButton != null) shopButton.onClick.AddListener(delegate { Say("Shop: coming in Build 3"); });
         if (indexButton != null) indexButton.onClick.AddListener(delegate { Say("Index: coming in Build 3"); });
 
         if (rideSlot != null)
         {
+            if (detachRideSlotFromHotbar && rideSlot.transform.parent != null && rideSlot.transform.parent.name == "Hotbar")
+            {
+                Transform hudRoot = rideSlot.transform.parent.parent;
+                if (hudRoot != null)
+                {
+                    rideSlot.transform.SetParent(hudRoot, false);
+                    RectTransform rt = rideSlot.GetComponent<RectTransform>();
+                    if (rt != null)
+                    {
+                        rt.anchorMin = new Vector2(0.5f, 0f);
+                        rt.anchorMax = new Vector2(0.5f, 0f);
+                        rt.pivot = new Vector2(0.5f, 0f);
+                        rt.anchoredPosition = standaloneRidePos;
+                        rt.sizeDelta = standaloneRideSize;
+                    }
+                }
+            }
             rideSlot.SetKey("Q");
-            if (rideSlot.button != null) rideSlot.button.onClick.AddListener(delegate { if (mount != null) mount.ToggleRide(); });
+            if (rideSlot.button != null)
+            {
+                rideSlot.button.onClick.AddListener(delegate { if (mount != null) mount.ToggleRide(); });
+                UIEffectUtil.AttachButtonBounce(this, rideSlot.button);
+            }
         }
         if (slots != null)
         {
@@ -113,50 +156,104 @@ public class HudController : MonoBehaviour
         }
         else if (showDevCheatButtons)
         {
-            CreateDevCheatButton();
+            CreateDevCheatButtons();
+        }
+
+        if (biomeHud == null) biomeHud = GetComponent<BiomeHudUI>();
+        if (biomeHud == null) biomeHud = gameObject.AddComponent<BiomeHudUI>();
+
+        if (tameSecuredUI == null) tameSecuredUI = GetComponentInChildren<TameSecuredUI>(true);
+        if (tameSecuredUI == null) tameSecuredUI = FindObjectOfType<TameSecuredUI>(true);
+        if (tameSecuredUI == null) tameSecuredUI = gameObject.AddComponent<TameSecuredUI>();
+
+        if (sellDinosPopup == null) sellDinosPopup = FindObjectOfType<SellDinosPopup>(true);
+        if (sellDinosPopup == null) sellDinosPopup = gameObject.AddComponent<SellDinosPopup>();
+
+        if (FindObjectOfType<SellDinoShop>(true) == null)
+        {
+            GameObject shopGo = new GameObject("SellDinoShop");
+            shopGo.transform.position = new Vector3(14.5f, -2.1f, -52f);
+            shopGo.AddComponent<SellDinoShop>();
         }
     }
 
-    void CreateDevCheatButton()
+    void CreateDevCheatButtons()
     {
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas == null) canvas = FindObjectOfType<Canvas>();
         if (canvas == null) return;
 
-        GameObject go = new GameObject("CheatStaminaButton", typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(canvas.transform, false);
-
-        RectTransform rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0f, 1f);
-        rt.anchorMax = new Vector2(0f, 1f);
-        rt.pivot = new Vector2(0f, 1f);
-        rt.anchoredPosition = cheatButtonPos;
-        rt.sizeDelta = cheatButtonSize;
-
-        Image bg = go.GetComponent<Image>();
-        bg.color = new Color(0.1f, 0.1f, 0.14f, 0.78f);
-
-        GameObject txtGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        txtGo.transform.SetParent(go.transform, false);
-        RectTransform trt = txtGo.GetComponent<RectTransform>();
-        trt.anchorMin = Vector2.zero;
-        trt.anchorMax = Vector2.one;
-        trt.offsetMin = Vector2.zero;
-        trt.offsetMax = Vector2.zero;
-
-        TextMeshProUGUI label = txtGo.GetComponent<TextMeshProUGUI>();
-        label.text = "+" + NumberFormat.Short(cheatStaminaAmount) + " Stamina (F2)";
-        label.fontSize = 18f;
-        label.fontStyle = FontStyles.Bold;
-        label.alignment = TextAlignmentOptions.Center;
-        label.color = new Color(1f, 0.9f, 0.25f);
-        label.raycastTarget = false;
-
-        Button btn = go.GetComponent<Button>();
-        btn.onClick.AddListener(delegate
+        UnityEngine.Events.UnityAction[] actions = new UnityEngine.Events.UnityAction[6]
         {
-            if (gm != null) gm.AddStamina(cheatStaminaAmount);
-        });
+            delegate { if (gm != null) gm.AddCash(cheatCashAmount); },
+            delegate { if (gm != null) gm.AddStamina(cheatStaminaAmount); },
+            delegate { if (gm != null) gm.DebugMountBySize(ObjectSize.Small); },
+            delegate { if (gm != null) gm.DebugMountBySize(ObjectSize.Medium); },
+            delegate { if (gm != null) gm.DebugMountBySize(ObjectSize.Large); },
+            delegate { if (gm != null) gm.DebugMountBySize(ObjectSize.Giant); }
+        };
+
+        for (int i = 0; i < 6; i++)
+        {
+            GameObject go = new GameObject("CheatButton_F" + (i + 1), typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(canvas.transform, false);
+
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            spawnedCheatRects[i] = rt;
+
+            Image bg = go.GetComponent<Image>();
+            bg.color = new Color(0.1f, 0.1f, 0.14f, 0.78f);
+
+            GameObject txtGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            txtGo.transform.SetParent(go.transform, false);
+            RectTransform trt = txtGo.GetComponent<RectTransform>();
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero;
+            trt.offsetMax = Vector2.zero;
+
+            TextMeshProUGUI label = txtGo.GetComponent<TextMeshProUGUI>();
+            label.fontSize = 17f;
+            label.fontStyle = FontStyles.Bold;
+            label.alignment = TextAlignmentOptions.Center;
+            label.color = i < 2 ? new Color(1f, 0.9f, 0.25f) : new Color(0.55f, 0.95f, 1f);
+            label.raycastTarget = false;
+            spawnedCheatLabels[i] = label;
+
+            Button btn = go.GetComponent<Button>();
+            btn.onClick.AddListener(actions[i]);
+        }
+
+        RefreshCheatButtonsLayout();
+    }
+
+    void RefreshCheatButtonsLayout()
+    {
+        string[] texts = new string[6]
+        {
+            "+$" + NumberFormat.Short(cheatCashAmount) + " Cash (F1)",
+            "+" + NumberFormat.Short(cheatStaminaAmount) + " Stamina (F2)",
+            "Q: Small Dino (F3)",
+            "Q: Medium Dino (F4)",
+            "Q: Large Dino (F5)",
+            "Q: Giant Dino (F6)"
+        };
+
+        for (int i = 0; i < 6; i++)
+        {
+            RectTransform rt = spawnedCheatRects[i];
+            if (rt == null) continue;
+            rt.gameObject.SetActive(showDevCheatButtons);
+            Vector2 extraOffset = (cheatButtonOffsets != null && i < cheatButtonOffsets.Length) ? cheatButtonOffsets[i] : Vector2.zero;
+            float yOffset = -i * (cheatButtonSize.y + cheatButtonSpacing);
+            rt.anchoredPosition = cheatButtonPos + new Vector2(0f, yOffset) + extraOffset;
+            rt.sizeDelta = cheatButtonSize;
+            if (spawnedCheatLabels[i] != null)
+                spawnedCheatLabels[i].text = texts[i];
+        }
     }
 
     void OnDestroy()
@@ -235,5 +332,7 @@ public class HudController : MonoBehaviour
             bool show = holding && !inPen && player != null && player.State == PlayerState.Walking;
             if (depositHint.activeSelf != show) depositHint.SetActive(show);
         }
+
+        RefreshCheatButtonsLayout();
     }
 }

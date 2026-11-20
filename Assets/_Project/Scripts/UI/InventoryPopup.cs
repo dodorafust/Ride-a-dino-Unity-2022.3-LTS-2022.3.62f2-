@@ -6,6 +6,8 @@ using UnityEngine.UI;
 // Popup "Dinosaurs". Gắn lên chính panel; HudController bật/tắt panel bằng Toggle().
 public class InventoryPopup : MonoBehaviour
 {
+    public static InventoryPopup Instance { get; private set; }
+
     public RectTransform content;            // nơi sinh ra các ô (có GridLayoutGroup)
     public InventoryCellUI cellPrefab;
     public TMP_Text countText;
@@ -13,16 +15,32 @@ public class InventoryPopup : MonoBehaviour
     public Button closeButton;
     public Button sellButton;
 
+    [Header("Hiệu ứng mở Popup")]
+    public float openBounceDuration = 0.28f;
+
     GameManager gm;
     bool subscribed;
+    Coroutine popRoutine;
 
     public bool Visible { get { return gameObject.activeSelf; } }
 
-    public void Toggle() { gameObject.SetActive(!gameObject.activeSelf); }
+    public void Toggle()
+    {
+        bool open = !gameObject.activeSelf;
+        if (open)
+        {
+            if (PenPanel.Instance != null) PenPanel.Instance.Hide();
+            if (SellDinosPopup.Instance != null) SellDinosPopup.Instance.Hide();
+        }
+        gameObject.SetActive(open);
+        if (open)
+            popRoutine = UIEffectUtil.PlaySpringPop(this, transform as RectTransform, popRoutine, openBounceDuration);
+    }
     public void Hide() { gameObject.SetActive(false); }
 
     void Awake()
     {
+        Instance = this;
         if (closeButton != null) closeButton.onClick.AddListener(Hide);
         if (sellButton != null) sellButton.onClick.AddListener(SellHeld);
     }
@@ -85,12 +103,12 @@ public class InventoryPopup : MonoBehaviour
         }
 
         OwnedDino held = inv.Held;
-        if (sellButton != null) sellButton.gameObject.SetActive(held != null);
+        if (sellButton != null) sellButton.gameObject.SetActive(false);
         if (footerText != null)
             footerText.text = held == null
                 ? "Tap a dino to hold it, then tap your pen floor"
                 : "<color=#" + DinoColors.Hex(DinoColors.Of(held.data.rarity)) + ">" + held.Title + "</color>  $" +
-                  NumberFormat.Short(held.MoneyPerSecond) + "/s   (sell $" + NumberFormat.Short(held.SellValue) + ")";
+                  NumberFormat.Short(held.MoneyPerSecond) + "/s";
     }
 
     void OnCellClicked(OwnedDino d)

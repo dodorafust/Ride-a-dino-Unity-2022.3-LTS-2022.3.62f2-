@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: Emerald
   isNormal: 0
-  moneyMultiplier: 16
+  moneyMultiplier: 5
+  staminaMultiplier: 0
   useTint: 1
   tint: {r: 0.1, g: 0.85, b: 0.45, a: 1}
   vfxPrefab: {fileID: 0}

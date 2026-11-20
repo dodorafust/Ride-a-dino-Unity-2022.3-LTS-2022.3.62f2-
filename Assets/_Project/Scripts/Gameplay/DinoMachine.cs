@@ -4,6 +4,8 @@ using UnityEngine;
 [Serializable]
 public class MachineLevelConfig
 {
+    public string displayName;             // tên hiển thị ở level này (vd: Allosaurus) - để trống sẽ hiện Level X > Y
+    public Sprite icon;                    // ảnh icon ở level này (tùy chọn)
     public GameObject model;               // model hiển thị ở level này
     public GameObject vfx;                 // VFX bật liên tục ở level này (tùy chọn)
     public ParticleSystem upgradeBurstVfx; // VFX nổ 1 lần ngay khi vừa nâng lên level này (tùy chọn)
@@ -23,6 +25,7 @@ public class DinoMachine : MonoBehaviour, IUpgradable
     [Header("Stamina")]
     public float baseStaminaPerSecond = 1f;    // Stamina/s = base x level
     public float tickInterval = 0.5f;          // cộng + hiện số mỗi ngần này giây
+    public Vector3 staminaPopupOffset = new Vector3(0f, 2.4f, 0f); // vị trí chữ +Stamina bay lên quanh người chơi
 
     [Header("Đung đưa")]
     public float maxSwingAngle = 25f;          // độ
@@ -43,6 +46,12 @@ public class DinoMachine : MonoBehaviour, IUpgradable
     [Header("Khác")]
     public float interactRange = 8f;
     public Vector3 labelOffset = new Vector3(0f, 4.2f, 0f);
+    public bool showFloatingLabel = true;
+    [Tooltip("Gắn SignBoardUI nếu muốn dùng bảng World Space UI thay cho chữ lơ lửng WorldLabel.")]
+    public SignBoardUI boardUI;
+    public string labelTitleFormat = "DINO MACHINE  Lv {0}";
+    public string labelBonusFormat = "+{0} Stamina/s";
+    public string labelPromptText = "Touch to ride";
 
     bool HasLevelTable { get { return levels != null && levels.Length > 0; } }
     int EffectiveMaxLevel { get { return HasLevelTable ? levels.Length : maxLevel; } }
@@ -86,11 +95,27 @@ public class DinoMachine : MonoBehaviour, IUpgradable
         get
         {
             if (HasLevelTable && level < levels.Length && levels[level] != null)
-            {
-                float diff = levels[level].staminaPerSecond - StaminaPerSecond;
-                return "+" + NumberFormat.Small(diff) + " Stamina/s (" + NumberFormat.Small(levels[level].staminaPerSecond) + "/s)";
-            }
-            return "+" + NumberFormat.Small(baseStaminaPerSecond) + " Stamina/s";
+                return "+" + NumberFormat.Small(StaminaPerSecond) + " > +" + NumberFormat.Small(levels[level].staminaPerSecond) + " Stamina/s";
+            float nextSpd = baseStaminaPerSecond * (level + 1);
+            return "+" + NumberFormat.Small(StaminaPerSecond) + " > +" + NumberFormat.Small(nextSpd) + " Stamina/s";
+        }
+    }
+    public string NextDisplayName
+    {
+        get
+        {
+            if (HasLevelTable && level < levels.Length && levels[level] != null && !string.IsNullOrEmpty(levels[level].displayName))
+                return levels[level].displayName;
+            return null;
+        }
+    }
+    public Sprite NextIcon
+    {
+        get
+        {
+            if (HasLevelTable && level < levels.Length && levels[level] != null && levels[level].icon != null)
+                return levels[level].icon;
+            return null;
         }
     }
     public event Action Changed;
@@ -102,11 +127,22 @@ public class DinoMachine : MonoBehaviour, IUpgradable
     void Start()
     {
         if (spring != null) springRest = spring.localRotation;
-        if (GameManager.Instance != null)
+        if (boardUI == null) boardUI = GetComponentInChildren<SignBoardUI>(true);
+        if (showFloatingLabel && boardUI == null && GameManager.Instance != null)
             label = GameManager.Instance.CreateLabel(transform, labelOffset, "");
         ApplyCurrentLevelVisuals(false);
         RefreshLabel();
     }
+
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        if (Application.isPlaying) return;
+        UpgradeSign[] signs = FindObjectsOfType<UpgradeSign>(true);
+        for (int i = 0; i < signs.Length; i++)
+            if (signs[i] != null && signs[i].target == this) signs[i].RefreshPreviewInEditor();
+    }
+#endif
 
     void ApplyCurrentLevelVisuals(bool playBurst)
     {
@@ -137,9 +173,17 @@ public class DinoMachine : MonoBehaviour, IUpgradable
 
     void RefreshLabel()
     {
+        string title = string.Format(labelTitleFormat, level);
+        string bonus = string.Format(labelBonusFormat, NumberFormat.Small(StaminaPerSecond));
+        if (boardUI != null)
+        {
+            boardUI.SetCustomInfo(title, bonus, labelPromptText, "", Color.clear);
+            return;
+        }
         if (label == null) return;
-        label.SetText("DINO MACHINE  Lv " + level + "\n<color=#FFE633>+" + NumberFormat.Small(StaminaPerSecond) +
-                      " Stamina/s</color>\nTouch to ride");
+        label.gameObject.SetActive(showFloatingLabel);
+        if (!showFloatingLabel) return;
+        label.SetText(title + "\n<color=#FFE633>" + bonus + "</color>\n" + labelPromptText);
     }
 
     float nextEnterTime;
@@ -187,7 +231,7 @@ public class DinoMachine : MonoBehaviour, IUpgradable
             GameManager.Instance.AddStamina(gain);
 
             PlayerController p = PlayerController.Instance;
-            Vector3 pos = (p != null ? p.transform.position : transform.position) + Vector3.up * 2.4f;
+            Vector3 pos = (p != null ? p.transform.position : transform.position) + staminaPopupOffset;
             GameManager.Instance.ShowPopup(pos, "+" + NumberFormat.Small(gain), PopupKind.Stamina);
         }
     }

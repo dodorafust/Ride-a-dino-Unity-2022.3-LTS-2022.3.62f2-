@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: Diamond
   isNormal: 0
-  moneyMultiplier: 4
+  moneyMultiplier: 3
+  staminaMultiplier: 0
   useTint: 1
   tint: {r: 0.6, g: 0.92, b: 1, a: 1}
   vfxPrefab: {fileID: 0}

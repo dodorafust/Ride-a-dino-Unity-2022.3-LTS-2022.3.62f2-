@@ -13,11 +13,34 @@ MonoBehaviour:
   m_Name: Tyrannosaurus
   m_EditorClassIdentifier: 
   displayName: Tyrannosaurus
-  rarity: 5
+  rarity: 4
+  size: 5
+  diet: 1
   zone: 4
   icon: {fileID: 0}
-  modelPrefab: {fileID: 5920884724692048290, guid: 10879e17dac76ad43babac438f8293b7, type: 3}
+  modelPrefab: {fileID: 100001, guid: a1b2c3d4e5f64789a0b1c2d3e4f50002, type: 3}
+  animatorController: {fileID: 22100000, guid: a1b2c3d4e5f64789a0b1c2d3e4f50003, type: 2}
+  modelScale: 2.5
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1, z: 0}
+  seatSizeScaleWeight: 0.35
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
   baseMoney: 80
   requiredStamina: 800
   tameTime: 8
-  runSpeed: 20
+  runSpeed: 30
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  maxAliveOnTrack: 3
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 4.5}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0

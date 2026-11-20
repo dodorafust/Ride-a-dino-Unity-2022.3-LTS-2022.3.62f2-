@@ -189,5 +189,5 @@ MonoBehaviour:
   sizePerMeter: 0.05
   minScale: 0.6
   maxScale: 2.5
-  maxDistance: 45
+  maxDistance: 60
   hidden: 0

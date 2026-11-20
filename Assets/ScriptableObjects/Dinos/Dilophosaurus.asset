@@ -14,10 +14,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayName: Dilophosaurus
   rarity: 1
+  size: 1
+  diet: 1
   zone: 1
   icon: {fileID: 0}
-  modelPrefab: {fileID: 5920884724692048290, guid: 10879e17dac76ad43babac438f8293b7, type: 3}
+  modelPrefab: {fileID: 7933740735542775109, guid: 2f34638c320fbad4c8bccad8c43be8da, type: 3}
+  animatorController: {fileID: 22100000, guid: a210a94468b83d4439af7095aeb15a11, type: 2}
+  modelScale: 1
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.2, z: 0}
+  seatSizeScaleWeight: 0.45
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
   baseMoney: 2
   requiredStamina: 10
   tameTime: 4.5
-  runSpeed: 20
+  runSpeed: 26
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  maxAliveOnTrack: 6
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 1.4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 3}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0
