@@ -47,8 +47,8 @@ public class PlayerController : MonoBehaviour
     public float steerDelayAfterMount = 0f;
 
     [Header("Dino Riding Steering")]
-    [Tooltip("Bật: xoay camera sẽ tự điều hướng khi chạy/bay/cưỡi. Tắt: chỉ điều khiển hướng bằng joystick hoặc WASD.")]
-    public bool cameraSteerEnabled = false;
+    [Tooltip("Bật: xoay camera sẽ tự điều hướng khi chạy/bay/cưỡi (mặc định ban đầu). Tắt: không tự bẻ hướng theo camera khi đứng yên không bấm phím.")]
+    public bool cameraSteerEnabled = true;
     public bool limitDinoTurnAngle = false;        // tắt = cho phép Dino quay đầu tự do theo camera & nút di chuyển (không giới hạn góc)
     public float dinoMaxTurnAngle = 60f;           // góc quay đầu tối đa (độ) khi bật giới hạn
 
@@ -168,24 +168,27 @@ public class PlayerController : MonoBehaviour
     float petRiseTimer;
     Vector3 petRiseStartLocal;
     Vector3 velocity;              // vận tốc tự quản (thay cho Rigidbody)
+    Vector3 visualBaseLocalScale = Vector3.one;
     CollisionFlags lastFlags;
     float currentUpGravity;        // g = -2H / Th^2 của cú nhảy hiện tại
     bool steerWithCamera;          // true sau khi nhảy khỏi Dino / bị hất: xoay camera = bẻ hướng bay
     bool hasIsRunning, hasIsJumping, hasIsGrounded, hasIsFalling, hasVerticalSpeed,
-         hasJumpStart, hasLand, hasIsRiding, hasIsHolding, hasIsLassoing, hasJumpFromDino, hasDie, hasIsRunActive;
+         hasJumpStart, hasLand, hasIsRiding, hasIsHolding, hasIsLassoing, hasJumpFromDino, hasDie, hasKilledByDino, hasIsRunActive;
     readonly Collider[] hitBuf = new Collider[32];
 
     // Công thức Kyle Pittman (GDC "Building a Better Jump"): v0 = 2H / Th, g = -2H / Th^2
     float GetJumpVelocity(bool dinoJump)
     {
-        float h = Mathf.Max(0.1f, dinoJump ? dinoJumpHeight : jumpHeight);
+        float jumpMul = GameManager.Instance != null ? GameManager.Instance.GetAuraBuffMultiplier(AuraBuffType.JumpHeightMultiplier) : 1f;
+        float h = Mathf.Max(0.1f, (dinoJump ? dinoJumpHeight : jumpHeight) * jumpMul);
         float th = Mathf.Max(0.05f, dinoJump ? dinoTimeToJumpApex : timeToJumpApex);
         return (2f * h) / th;
     }
 
     float GetUpwardGravity(bool dinoJump)
     {
-        float h = Mathf.Max(0.1f, dinoJump ? dinoJumpHeight : jumpHeight);
+        float jumpMul = GameManager.Instance != null ? GameManager.Instance.GetAuraBuffMultiplier(AuraBuffType.JumpHeightMultiplier) : 1f;
+        float h = Mathf.Max(0.1f, (dinoJump ? dinoJumpHeight : jumpHeight) * jumpMul);
         float th = Mathf.Max(0.05f, dinoJump ? dinoTimeToJumpApex : timeToJumpApex);
         return (-2f * h) / (th * th);
     }
@@ -219,6 +222,7 @@ public class PlayerController : MonoBehaviour
         if (animator != null)
         {
             visualBaseLocalPos = animator.transform.localPosition;
+            visualBaseLocalScale = animator.transform.localScale;
             if (animator.isHuman)
             {
                 if (ropeHand == null) ropeHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
@@ -299,8 +303,10 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        bool sellPopupOpen = SellDinosPopup.Instance != null && SellDinosPopup.Instance.Visible;
-        if (sellPopupOpen)
+        bool modalPopupOpen = (SellDinosPopup.Instance != null && SellDinosPopup.Instance.Visible)
+                           || (DinoIndexPopup.Instance != null && DinoIndexPopup.Instance.Visible)
+                           || (AurasPopup.Instance != null && AurasPopup.Instance.Visible);
+        if (modalPopupOpen)
         {
             GameInput.ConsumeJump();
             jumpPressed = false;
@@ -1280,6 +1286,7 @@ public class PlayerController : MonoBehaviour
         OwnedDino owned = currentDino.Owned;
         currentDino.Claim();
         if (GameManager.Instance != null) GameManager.Instance.Inventory.Add(owned);
+        if (DinoIndexPopup.Instance != null) DinoIndexPopup.Instance.RecordDinoUnlocked(owned);
         if (TameSecuredUI.Instance != null)
         {
             TameSecuredUI.Instance.NotifyTamed(owned);
@@ -1333,9 +1340,134 @@ public class PlayerController : MonoBehaviour
     void TriggerCarnivoreKill(Dino killer)
     {
         if (onCarnivoreKill != null) onCarnivoreKill.Invoke();
+        if (killer != null)
+        {
+            DinoKillCutsceneDirector director = DinoKillCutsceneDirector.GetOrCreate(this);
+            if (director != null)
+            {
+                director.Play(this, killer);
+                return;
+            }
+        }
         if (useCustomCarnivoreKillCutscene) return;
-        // Hiện tại dùng tính năng hất xuống đất chết; về sau bật useCustomCarnivoreKillCutscene để chạy cutscene riêng.
         Die(DeathReason.CarnivoreKill);
+    }
+
+    public Vector3 VisualBaseLocalPos => visualBaseLocalPos;
+    public Vector3 VisualBaseLocalScale => visualBaseLocalScale;
+
+    public float GetGroundSurfaceY(Vector3 worldPos)
+    {
+        if (Physics.Raycast(worldPos + Vector3.up * 4f, Vector3.down, out RaycastHit hit, 20f,
+                            GroundCheckMask(), QueryTriggerInteraction.Ignore))
+            return hit.point.y;
+        return worldPos.y;
+    }
+
+    public float GetGroundPlayerRootY(Vector3 worldPos)
+    {
+        float surfaceY = GetGroundSurfaceY(worldPos);
+        float standOffset = cc != null ? (cc.height * 0.5f - cc.center.y) : 1f;
+        return surfaceY + standOffset;
+    }
+
+    public void BeginKillCutsceneState()
+    {
+        carnivoreKillPending = false;
+        carnivoreKillTimer = 0f;
+
+        if (currentDino != null) ReleaseDino();
+        ride.End();
+        SetTarget(null);
+        if (preview != null)
+        {
+            preview.Hide();
+            preview.SetRope(null, null);
+        }
+        DismountPet();
+
+        if (State == PlayerState.Sitting && machine != null)
+        {
+            machine.SetOccupied(false);
+            machine = null;
+        }
+
+        diesOnGround = false;
+        lastDino = null;
+        catchLockUntil = 0f;
+        landDipTimer = 0f;
+        waitMoveReleaseToStandUp = false;
+        lastMoveInputTime = -999f;
+        deadFalling = false;
+        velocity = Vector3.zero;
+        State = PlayerState.Dead;
+        SetBodyActive(false);
+
+        if (animator != null)
+        {
+            animator.transform.localPosition = visualBaseLocalPos;
+            animator.transform.localScale = visualBaseLocalScale;
+            if (hasIsJumping) animator.SetBool("IsJumping", false);
+            if (hasIsFalling) animator.SetBool("IsFalling", false);
+            if (hasIsRunning) animator.SetBool("IsRunning", false);
+            if (hasIsRiding) animator.SetBool("IsRiding", false);
+            if (hasIsLassoing) animator.SetBool("IsLassoing", false);
+            if (hasIsGrounded) animator.SetBool("IsGrounded", true);
+            if (hasVerticalSpeed) animator.SetFloat("VerticalSpeed", 0f);
+        }
+        SetPlayerVisualVisible(true);
+    }
+
+    public void PlayKilledByDinoSupineAnim()
+    {
+        if (animator == null) return;
+        animator.transform.localPosition = visualBaseLocalPos;
+        if (hasIsJumping) animator.SetBool("IsJumping", false);
+        if (hasIsFalling) animator.SetBool("IsFalling", false);
+        if (hasIsGrounded) animator.SetBool("IsGrounded", true);
+        if (hasKilledByDino) animator.SetTrigger("KilledByDino");
+        int stateHash = Animator.StringToHash("Base Layer.KilledByDino");
+        if (animator.HasState(0, stateHash))
+            animator.CrossFadeInFixedTime(stateHash, 0.08f, 0);
+        else if (hasDie)
+            animator.SetTrigger("Die");
+    }
+
+    public void PlayKilledByDinoAirTumbleAnim()
+    {
+        if (animator == null) return;
+        if (hasIsGrounded) animator.SetBool("IsGrounded", false);
+        if (hasIsJumping) animator.SetBool("IsJumping", true);
+        if (hasIsFalling) animator.SetBool("IsFalling", true);
+        int jumpUp = Animator.StringToHash("Base Layer.JumpUp");
+        int freeFall = Animator.StringToHash("Base Layer.FreeFall");
+        if (animator.HasState(0, freeFall)) animator.CrossFadeInFixedTime(freeFall, 0.06f, 0);
+        else if (animator.HasState(0, jumpUp)) animator.CrossFadeInFixedTime(jumpUp, 0.06f, 0);
+    }
+
+    public void SetPlayerVisualVisible(bool visible)
+    {
+        Transform root = animator != null ? animator.transform : transform;
+        Renderer[] rs = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < rs.Length; i++)
+        {
+            if (rs[i] != null) rs[i].enabled = visible;
+        }
+    }
+
+    public void FinishKillCutsceneAndRespawn()
+    {
+        SetPlayerVisualVisible(true);
+        if (animator != null)
+        {
+            animator.transform.localPosition = visualBaseLocalPos;
+            animator.transform.localRotation = Quaternion.identity;
+            animator.transform.localScale = visualBaseLocalScale;
+        }
+        TeleportTo(RespawnPos());
+        SetBodyActive(true);
+        State = PlayerState.Walking;
+        ResetAnimatorToIdle();
     }
 
     // ---------- Die / Respawn ----------
@@ -1609,6 +1741,7 @@ public class PlayerController : MonoBehaviour
         if (hasLand) animator.ResetTrigger("Land");
         if (hasJumpFromDino) animator.ResetTrigger("JumpFromDino");
         if (hasDie) animator.ResetTrigger("Die");
+        if (hasKilledByDino) animator.ResetTrigger("KilledByDino");
         int idle = Animator.StringToHash("Base Layer.Breathing Idle");
         if (animator.HasState(0, idle)) animator.Play(idle, 0, 0f);
     }
@@ -1633,6 +1766,7 @@ public class PlayerController : MonoBehaviour
                 case "IsLassoing": hasIsLassoing = true; break;
                 case "JumpFromDino": hasJumpFromDino = true; break;
                 case "Die": hasDie = true; break;
+                case "KilledByDino": hasKilledByDino = true; break;
                 case "IsRunActive": hasIsRunActive = true; break;
             }
         }
@@ -2037,6 +2171,12 @@ public class PlayerController : MonoBehaviour
         holdVisualRoot.transform.SetParent(animator.transform, false);
         holdVisualRoot.transform.localPosition = holdDinoOffset + held.data.holdPositionOffset;
         holdVisualRoot.transform.localRotation = Quaternion.Euler(holdDinoEuler) * Quaternion.Euler(held.data.holdRotationOffset);
+        // Khử scale của model nhân vật (char_1 đang có localScale = 1.1) để Dino cầm trên tay có kích thước thế giới (lossyScale) bằng đúng 100% khi cưỡi và khi thả trong chuồng
+        Vector3 pScale = animator.transform.lossyScale;
+        holdVisualRoot.transform.localScale = new Vector3(
+            Mathf.Abs(pScale.x) > 0.001f ? 1f / pScale.x : 1f,
+            Mathf.Abs(pScale.y) > 0.001f ? 1f / pScale.y : 1f,
+            Mathf.Abs(pScale.z) > 0.001f ? 1f / pScale.z : 1f);
 
         GameObject model = DinoView.BuildModel(holdVisualRoot.transform, held, new Vector3(1.1f, 1.4f, 2.2f));
         float labelTopY = holdLabelHeight;

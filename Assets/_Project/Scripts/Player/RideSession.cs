@@ -99,7 +99,8 @@ public class RideSession : MonoBehaviour
     public RideEvent Tick(float dt)
     {
         if (!Active) return RideEvent.None;
-        elapsed += dt;
+        float tameMul = GameManager.Instance != null ? GameManager.Instance.GetAuraBuffMultiplier(AuraBuffType.TameSpeedMultiplier) : 1f;
+        elapsed += dt * tameMul;
 
         if (!Tamed)
         {
@@ -134,7 +135,7 @@ public class RideSession : MonoBehaviour
             bool isCarnivore = Dino != null && Dino.Data != null && Dino.Data.diet == DinoDiet.Carnivore;
             if (isCarnivore) return RideEvent.StaminaEmptyCarnivoreKill;
             bool canKill = !Tamed && Dino != null && Dino.Data != null && Dino.Data.killOnStaminaEmptyIfUntamed;
-            return canKill ? RideEvent.StaminaEmptyDead : RideEvent.StaminaEmptyThrow;
+            return canKill ? RideEvent.StaminaEmptyCarnivoreKill : RideEvent.StaminaEmptyThrow;
         }
 
         return RideEvent.None;

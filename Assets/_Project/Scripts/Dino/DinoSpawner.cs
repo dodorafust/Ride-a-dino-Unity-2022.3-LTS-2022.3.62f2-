@@ -411,7 +411,9 @@ public class DinoSpawner : MonoBehaviour
             if (!clear) continue;
 
             Dino d = Instantiate(dinoPrefab, pos, Quaternion.Euler(0f, yaw, 0f));
-            var owned = new OwnedDino(entry.dino, activeTable.PickVariant(), DinoTrait.None, activeTable.PickSize());
+            DinoSizeAsset pickedSizeAsset = activeTable.PickSizeAsset();
+            DinoSizeType pickedSizeType = pickedSizeAsset != null ? pickedSizeAsset.legacyType : activeTable.PickSize();
+            var owned = new OwnedDino(entry.dino, activeTable.PickVariant(), DinoTrait.None, pickedSizeType, pickedSizeAsset);
             float speed = entry.dino.runSpeed + Random.Range(-entry.speedJitter, entry.speedJitter);
             d.Setup(owned, speed, yaw, zone);
             if (useActiveWindow)

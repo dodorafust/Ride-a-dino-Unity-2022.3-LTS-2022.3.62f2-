@@ -38,6 +38,26 @@ MonoBehaviour:
     herdMin: 1
     herdMax: 3
     speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 81a6b361adbe0c44f8f3fc20c0d959fa, type: 2}
+    weight: 10
+    herdMin: 1
+    herdMax: 1
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 19f670335c6076740889173e01340d08, type: 2}
+    weight: 10
+    herdMin: 1
+    herdMax: 1
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 30b6bf0559e680049add4304d3807393, type: 2}
+    weight: 10
+    herdMin: 1
+    herdMax: 1
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: 26fa91807efa8904e83c0858d7475343, type: 2}
+    weight: 10
+    herdMin: 1
+    herdMax: 1
+    speedJitter: 0.5
   variants:
   - variant: {fileID: 11400000, guid: 6e5fcec86af0aad4b8264b822fc169ff, type: 2}
     weight: 80
@@ -49,4 +69,22 @@ MonoBehaviour:
     weight: 3
   - variant: {fileID: 11400000, guid: 7b471918cd2119c4f98c3b913ea16758, type: 2}
     weight: 2
-  sizes: []
+  sizes:
+  - sizeAsset: {fileID: 11400000, guid: 669cb2f0eed52ed4f85de99781183cfe, type: 2}
+    sizeType: 0
+    weight: 70
+  - sizeAsset: {fileID: 11400000, guid: c422ea5318d647948b7e7706f5271a2b, type: 2}
+    sizeType: 1
+    weight: 12
+  - sizeAsset: {fileID: 11400000, guid: 8f397b5acb55ae141bf8a9051968a77b, type: 2}
+    sizeType: 2
+    weight: 8
+  - sizeAsset: {fileID: 11400000, guid: 52ad69c1e697afa4683e0fcb38aee816, type: 2}
+    sizeType: 3
+    weight: 5
+  - sizeAsset: {fileID: 11400000, guid: 57ce365e976a8b64098d1c088f9fd2a5, type: 2}
+    sizeType: 4
+    weight: 2.5
+  - sizeAsset: {fileID: 11400000, guid: 036d39b079954e54cb778e9b7950f9a4, type: 2}
+    sizeType: 5
+    weight: 0.5

@@ -142,6 +142,63 @@ public static class SignBoardSetupMenu
         Debug.Log("[Ride a Dino] Đã dựng SellDinoShop & SellDinosPopup để bạn tự do chỉnh sửa.");
     }
 
+    [InitializeOnLoadMethod]
+    static void AutoBuildDinoIndexIfMissing()
+    {
+        EditorApplication.delayCall += delegate
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode || Application.isPlaying) return;
+            HudController hud = Object.FindObjectOfType<HudController>(true);
+            if (hud != null && hud.dinoIndexPopup == null)
+                BuildDinoIndexPopup();
+        };
+    }
+
+    [MenuItem("Tools/Ride a Dino/Build Dino Index Popup (HUD)")]
+    public static void BuildDinoIndexPopup()
+    {
+        HudController hud = Object.FindObjectOfType<HudController>(true);
+        if (hud == null)
+        {
+            Debug.LogWarning("[Ride a Dino] Không tìm thấy HudController trong Scene.");
+            return;
+        }
+
+        DinoIndexPopup popup = hud.dinoIndexPopup != null ? hud.dinoIndexPopup : Object.FindObjectOfType<DinoIndexPopup>(true);
+        if (popup == null)
+        {
+            Canvas canvas = hud.GetComponentInParent<Canvas>();
+            Transform parent = canvas != null ? canvas.transform : hud.transform;
+            Transform existing = parent.Find("DinoIndexPopup");
+            GameObject popGo = existing != null ? existing.gameObject : new GameObject("DinoIndexPopup", typeof(RectTransform));
+            if (existing == null)
+            {
+                popGo.transform.SetParent(parent, false);
+                RectTransform rt = popGo.GetComponent<RectTransform>();
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                Undo.RegisterCreatedObjectUndo(popGo, "Create DinoIndexPopup");
+            }
+            popup = popGo.GetComponent<DinoIndexPopup>();
+            if (popup == null) popup = Undo.AddComponent<DinoIndexPopup>(popGo);
+        }
+
+        Undo.RecordObject(hud, "Assign DinoIndexPopup");
+        Undo.RecordObject(popup, "Build DinoIndexPopup");
+        hud.dinoIndexPopup = popup;
+        popup.BuildInEditor();
+        EditorUtility.SetDirty(hud);
+        EditorUtility.SetDirty(popup);
+
+        if (!Application.isPlaying)
+            EditorSceneManager.MarkAllScenesDirty();
+
+        Selection.activeGameObject = popup.gameObject;
+        Debug.Log("[Ride a Dino] Đã dựng DinoIndexPopup trong Scene để bạn tự do chỉnh sửa.");
+    }
+
     static Transform FindBoardTransform(Transform root)
     {
         Transform best = null;

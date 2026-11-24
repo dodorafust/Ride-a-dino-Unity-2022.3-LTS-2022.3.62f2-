@@ -46,7 +46,7 @@ MonoBehaviour:
   - dino: {fileID: 11400000, guid: 2f9389e06b418a84dac84dc24a0ff10e, type: 2}
     weight: 25
     herdMin: 1
-    herdMax: 3
+    herdMax: 2
     speedJitter: 0.5
   variants:
   - variant: {fileID: 11400000, guid: 6e5fcec86af0aad4b8264b822fc169ff, type: 2}
@@ -59,4 +59,22 @@ MonoBehaviour:
     weight: 3
   - variant: {fileID: 11400000, guid: 7b471918cd2119c4f98c3b913ea16758, type: 2}
     weight: 2
-  sizes: []
+  sizes:
+  - sizeAsset: {fileID: 11400000, guid: 669cb2f0eed52ed4f85de99781183cfe, type: 2}
+    sizeType: 0
+    weight: 70
+  - sizeAsset: {fileID: 11400000, guid: c422ea5318d647948b7e7706f5271a2b, type: 2}
+    sizeType: 1
+    weight: 12
+  - sizeAsset: {fileID: 11400000, guid: 8f397b5acb55ae141bf8a9051968a77b, type: 2}
+    sizeType: 2
+    weight: 8
+  - sizeAsset: {fileID: 11400000, guid: 52ad69c1e697afa4683e0fcb38aee816, type: 2}
+    sizeType: 3
+    weight: 5
+  - sizeAsset: {fileID: 11400000, guid: 57ce365e976a8b64098d1c088f9fd2a5, type: 2}
+    sizeType: 4
+    weight: 2.5
+  - sizeAsset: {fileID: 11400000, guid: 036d39b079954e54cb778e9b7950f9a4, type: 2}
+    sizeType: 5
+    weight: 0.5

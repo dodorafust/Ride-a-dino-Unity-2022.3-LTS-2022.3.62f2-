@@ -32,6 +32,11 @@ MonoBehaviour:
   runSpeed: 35
   riddenSpeedMultiplier: 1
   killOnStaminaEmptyIfUntamed: 0
+  killCutsceneStyle: 0
+  allowKillPounceBite: 0
+  allowKillTossSwallow: 0
+  allowKillStomp: 1
+  killCameraStyle: 0
   maxAliveOnTrack: 5
   wildSmashBreakables: 1
   eatRadiusBonus: 0
@@ -44,3 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
+  indexRewardCash: 0
+  indexRewardStamina: 0
+  indexAllSizesRewardCash: 0
+  indexAllVariantsRewardCash: 0

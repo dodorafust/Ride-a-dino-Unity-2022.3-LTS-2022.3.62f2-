@@ -31,6 +31,7 @@ public class InventoryPopup : MonoBehaviour
         {
             if (PenPanel.Instance != null) PenPanel.Instance.Hide();
             if (SellDinosPopup.Instance != null) SellDinosPopup.Instance.Hide();
+            if (DinoIndexPopup.Instance != null) DinoIndexPopup.Instance.Hide();
         }
         gameObject.SetActive(open);
         if (open)
@@ -41,8 +42,22 @@ public class InventoryPopup : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        if (closeButton != null) closeButton.onClick.AddListener(Hide);
-        if (sellButton != null) sellButton.onClick.AddListener(SellHeld);
+        Image bg = GetComponent<Image>();
+        if (bg != null && bg.sprite == null)
+        {
+            bg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 18);
+            bg.type = Image.Type.Sliced;
+        }
+        if (closeButton != null)
+        {
+            closeButton.onClick.AddListener(Hide);
+            UIEffectUtil.AttachButtonBounce(this, closeButton);
+        }
+        if (sellButton != null)
+        {
+            sellButton.onClick.AddListener(SellHeld);
+            UIEffectUtil.AttachButtonBounce(this, sellButton);
+        }
     }
 
     // Bảng để mở sẵn trong scene cho dễ chỉnh; vào Play thì tự ẩn

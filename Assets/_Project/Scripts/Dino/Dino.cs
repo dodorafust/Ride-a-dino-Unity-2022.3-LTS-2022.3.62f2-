@@ -93,8 +93,8 @@ public class Dino : MonoBehaviour
         get
         {
             DinoSpeciesSize baseS = Data != null ? Data.size : DinoSpeciesSize.Medium;
-            DinoSizeType st = Owned != null ? Owned.sizeType : DinoSizeType.Normal;
-            return DinoSizeModifiers.CombinedRank(baseS, st);
+            int bonus = Owned != null ? Owned.SizeRankBonus : 0;
+            return (int)baseS * 2 + bonus;
         }
     }
     public ObjectSize EffectiveSize
@@ -109,7 +109,13 @@ public class Dino : MonoBehaviour
     public bool Claimed { get; private set; }
     public bool IsPetOwned { get; private set; }
     public bool IsBeingEaten { get; private set; }
+    public bool IsInKillCutscene { get; private set; }
     public bool TouchingWall { get; private set; }
+    public Transform VisualRoot => visualRoot;
+    public Vector3 VisualBaseLocalPos => visualBaseLocalPos;
+    public Quaternion VisualBaseLocalRot => visualBaseLocalRot;
+    public float VisualScale => visualScale;
+    public Transform MouthBone => mouthBone;
     public Obstacle SlowingObstacle { get { return slowTimer > 0f ? lastHitObstacle : null; } }
 
     float steer, heading, laneYaw;
@@ -294,7 +300,7 @@ public class Dino : MonoBehaviour
         baseSeatLocalPos = seat != null ? seat.localPosition : new Vector3(0f, 3f, 0f);
         float sizeMul = Mathf.Max(0.1f, owned.SizeScaleMultiplier);
         float baseVisualScale = visualScale / sizeMul;
-        float seatSizeMul = DinoSizeModifiers.SeatOffsetMultiplier(owned.sizeType, owned.data.seatSizeScaleWeight);
+        float seatSizeMul = owned.SizeSeatOffsetMultiplier(owned.data.seatSizeScaleWeight);
         seatOffsetScaled = owned.data.seatOffset * (baseVisualScale * seatSizeMul);
         seatBone = DinoView.FindSeatBone(visual != null ? visual.transform : null, owned.data.seatBoneName);
         mouthBone = FindMouthBone(visual != null ? visual.transform : null, owned.data.mouthBoneName);
@@ -323,14 +329,22 @@ public class Dino : MonoBehaviour
     void UpdateSeatTransform()
     {
         if (seat == null) return;
+        if (Data != null && Owned != null)
+        {
+            float sizeMul = Mathf.Max(0.1f, Owned.SizeScaleMultiplier);
+            float baseVisualScale = visualScale / sizeMul;
+            float seatSizeMul = Owned.SizeSeatOffsetMultiplier(Data.seatSizeScaleWeight);
+            seatOffsetScaled = Data.seatOffset * (baseVisualScale * seatSizeMul);
+        }
         if (seatBone != null)
         {
             seat.position = seatBone.position + transform.TransformVector(seatOffsetScaled);
         }
         else
         {
-            float dataScale = (Data != null ? Mathf.Max(0.1f, Data.modelScale) : 1f) * (Owned != null ? Owned.SizeScaleMultiplier : 1f);
-            seat.position = transform.TransformPoint(baseSeatLocalPos * dataScale + seatOffsetScaled) + Vector3.up * currentHopY;
+            // Đồng bộ 100% với công thức của MountController.TryGetSeatWorldPosition (cưỡi ngoài đường chạy)
+            Vector3 rootPos = visualRoot != null ? visualRoot.position : transform.position;
+            seat.position = rootPos + transform.TransformVector(new Vector3(0f, 1.8f, 0f) + seatOffsetScaled);
         }
         seat.rotation = transform.rotation;
     }
@@ -363,12 +377,15 @@ public class Dino : MonoBehaviour
             sharedHighlightMat.SetFloat("_Glossiness", 0f);
             sharedHighlightMat.SetFloat("_Metallic", 0f);
             sharedHighlightMat.EnableKeyword("_EMISSION");
+            sharedHighlightMat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
 
-        Color glow = highlightColor * Mathf.Max(0.5f, highlightBrightness + highlightEmission);
-        sharedHighlightMat.color = glow;
-        sharedHighlightMat.SetColor("_Color", Color.black);
-        sharedHighlightMat.SetColor("_EmissionColor", glow);
+        Color baseCol = highlightColor * Mathf.Max(0.8f, highlightBrightness);
+        Color emitCol = highlightColor * Mathf.Max(0.25f, highlightEmission);
+        sharedHighlightMat.color = baseCol;
+        sharedHighlightMat.SetColor("_Color", baseCol);
+        sharedHighlightMat.SetColor("_BaseColor", baseCol);
+        sharedHighlightMat.SetColor("_EmissionColor", emitCol);
         return sharedHighlightMat;
     }
 
@@ -597,12 +614,39 @@ public class Dino : MonoBehaviour
         return null;
     }
 
-    Vector3 GetMouthWorldPosition()
+    public Vector3 GetMouthWorldPosition()
     {
         Vector3 localOff = (Data != null ? Data.mouthOffset : new Vector3(0f, 1.4f, 1.6f)) * visualScale;
         if (mouthBone != null)
             return mouthBone.position + transform.TransformVector(localOff * 0.25f);
         return transform.TransformPoint(localOff);
+    }
+
+    public void BeginKillCutscene()
+    {
+        IsInKillCutscene = true;
+        ClearLowStaminaEffect();
+        SetHighlight(false);
+        CurrentSpeed = 0f;
+        if (dinoAnimator != null)
+        {
+            dinoAnimator.SetBool("IsMoving", false);
+            dinoAnimator.speed = 1f;
+        }
+        if (label != null) label.hidden = true;
+    }
+
+    public void EndKillCutscene()
+    {
+        IsInKillCutscene = false;
+        if (visualRoot != null)
+        {
+            visualRoot.localPosition = visualBaseLocalPos;
+            visualRoot.localRotation = visualBaseLocalRot;
+        }
+        if (label != null) label.hidden = IsPetOwned;
+        heading = transform.eulerAngles.y;
+        wasRidden = true;
     }
 
     public void BeginBeingEaten()
@@ -736,7 +780,7 @@ public class Dino : MonoBehaviour
             if (otherDino != null && otherDino != this && !otherDino.IsRidden && !otherDino.Claimed && !otherDino.IsPetOwned && !otherDino.IsBeingEaten)
             {
                 bool diffSpecies = Data == null || otherDino.Data == null || otherDino.Data != Data;
-                if (diffSpecies && myRank > otherDino.EffectiveSizeScore)
+                if (diffSpecies && (myRank - otherDino.EffectiveSizeScore) >= DinoSizeModifiers.MinRankDiffToEat)
                 {
                     if (isCarnivore)
                     {
@@ -1046,7 +1090,7 @@ public class Dino : MonoBehaviour
 
     void Update()
     {
-        if (IsBeingEaten) return;
+        if (IsBeingEaten || IsInKillCutscene) return;
         float dt = Time.deltaTime;
         bool isCarnivore = Data != null && Data.diet == DinoDiet.Carnivore;
         bool herbivoreBucking = IsRidden && lowStaminaActive && !isCarnivore;

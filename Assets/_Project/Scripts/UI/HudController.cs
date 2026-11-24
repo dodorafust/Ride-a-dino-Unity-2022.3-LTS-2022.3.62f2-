@@ -21,6 +21,7 @@ public class HudController : MonoBehaviour
     [Header("Hotbar: 6 ô Dino + nút Q (Ride) tách riêng")]
     public HotbarSlotUI rideSlot;
     public HotbarSlotUI[] slots;
+    public float hotbarSlotSpacing = 16f;
     public bool detachRideSlotFromHotbar = true;
     public Vector2 standaloneRidePos = new Vector2(-450f, 16f);
     public Vector2 standaloneRideSize = new Vector2(104f, 104f);
@@ -35,6 +36,7 @@ public class HudController : MonoBehaviour
     public InventoryPopup inventoryPopup;
     public PenPanel penPanel;
     public SellDinosPopup sellDinosPopup;
+    public DinoIndexPopup dinoIndexPopup;
 
     [Header("Cưỡi Dino hoang")]
     public RideRingsUI rings;
@@ -66,6 +68,7 @@ public class HudController : MonoBehaviour
     Pen pen;
     Camera cam;
     float toastUntil;
+    GameObject indexAlertBadge;
     readonly RectTransform[] spawnedCheatRects = new RectTransform[6];
     readonly TextMeshProUGUI[] spawnedCheatLabels = new TextMeshProUGUI[6];
 
@@ -97,8 +100,21 @@ public class HudController : MonoBehaviour
             inventoryButton.onClick.AddListener(inventoryPopup.Toggle);
             UIEffectUtil.AttachButtonBounce(this, inventoryButton);
         }
-        if (shopButton != null) shopButton.onClick.AddListener(delegate { Say("Shop: coming in Build 3"); });
-        if (indexButton != null) indexButton.onClick.AddListener(delegate { Say("Index: coming in Build 3"); });
+        if (dinoIndexPopup == null) dinoIndexPopup = FindObjectOfType<DinoIndexPopup>(true);
+        if (dinoIndexPopup == null) dinoIndexPopup = gameObject.AddComponent<DinoIndexPopup>();
+        dinoIndexPopup.EnsureInitialized();
+
+        if (shopButton != null)
+        {
+            shopButton.onClick.AddListener(delegate { Say("Shop: coming soon"); });
+            UIEffectUtil.AttachButtonBounce(this, shopButton);
+        }
+        if (indexButton != null)
+        {
+            indexButton.onClick.AddListener(delegate { if (dinoIndexPopup != null) dinoIndexPopup.Toggle(); });
+            UIEffectUtil.AttachButtonBounce(this, indexButton);
+            CreateIndexAlertBadge();
+        }
 
         if (rideSlot != null)
         {
@@ -128,12 +144,21 @@ public class HudController : MonoBehaviour
         }
         if (slots != null)
         {
+            if (slots.Length > 0 && slots[0] != null && slots[0].transform.parent != null)
+            {
+                HorizontalLayoutGroup hlg = slots[0].transform.parent.GetComponent<HorizontalLayoutGroup>();
+                if (hlg != null) hlg.spacing = hotbarSlotSpacing;
+            }
             for (int i = 0; i < slots.Length; i++)
             {
                 if (slots[i] == null) continue;
                 int idx = i;
                 slots[i].SetKey((i + 1).ToString());
-                if (slots[i].button != null) slots[i].button.onClick.AddListener(delegate { SelectSlot(idx); });
+                if (slots[i].button != null)
+                {
+                    slots[i].button.onClick.AddListener(delegate { SelectSlot(idx); });
+                    UIEffectUtil.AttachButtonBounce(this, slots[i].button);
+                }
             }
         }
 
@@ -225,9 +250,49 @@ public class HudController : MonoBehaviour
 
             Button btn = go.GetComponent<Button>();
             btn.onClick.AddListener(actions[i]);
+            UIEffectUtil.AttachButtonBounce(this, btn);
         }
 
         RefreshCheatButtonsLayout();
+    }
+
+    void CreateIndexAlertBadge()
+    {
+        if (indexButton == null || indexAlertBadge != null) return;
+        Transform existing = indexButton.transform.Find("IndexAlertBadge");
+        if (existing != null) { indexAlertBadge = existing.gameObject; return; }
+
+        GameObject go = new GameObject("IndexAlertBadge", typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(indexButton.transform, false);
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = new Vector2(-6f, -6f);
+        rt.sizeDelta = new Vector2(28f, 28f);
+
+        Image img = go.GetComponent<Image>();
+        img.sprite = UIEffectUtil.GetRoundedRectSprite(32, 16);
+        img.color = new Color(0.95f, 0.22f, 0.22f, 1f);
+        img.raycastTarget = false;
+
+        GameObject txtGo = new GameObject("Bang", typeof(RectTransform), typeof(TextMeshProUGUI));
+        txtGo.transform.SetParent(rt, false);
+        RectTransform trt = txtGo.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+        TextMeshProUGUI tmp = txtGo.GetComponent<TextMeshProUGUI>();
+        tmp.text = "!";
+        tmp.fontSize = 20f;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = Color.white;
+        tmp.raycastTarget = false;
+
+        indexAlertBadge = go;
+        indexAlertBadge.SetActive(false);
     }
 
     void RefreshCheatButtonsLayout()
@@ -318,6 +383,17 @@ public class HudController : MonoBehaviour
                 if (Input.GetKeyDown(KeyCode.Alpha1 + i)) SelectSlot(i);
         if (Input.GetKeyDown(KeyCode.I) && inventoryPopup != null) inventoryPopup.Toggle();
         if (Input.GetKeyDown(KeyCode.P) && penPanel != null) penPanel.Toggle();
+
+        bool showBaseSideButtons = player == null || !player.RunActive;
+        if (shopButton != null && shopButton.gameObject.activeSelf != showBaseSideButtons)
+            shopButton.gameObject.SetActive(showBaseSideButtons);
+        if (indexButton != null && indexButton.gameObject.activeSelf != showBaseSideButtons)
+            indexButton.gameObject.SetActive(showBaseSideButtons);
+        if (indexAlertBadge != null && dinoIndexPopup != null)
+        {
+            bool showAlert = showBaseSideButtons && dinoIndexPopup.TotalUnclaimedCount > 0;
+            if (indexAlertBadge.activeSelf != showAlert) indexAlertBadge.SetActive(showAlert);
+        }
 
         if (toastText != null && toastText.gameObject.activeSelf && Time.time > toastUntil)
             toastText.gameObject.SetActive(false);

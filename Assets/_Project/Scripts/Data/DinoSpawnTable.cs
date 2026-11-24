@@ -26,7 +26,8 @@ public class DinoSpawnTable : ScriptableObject
     [Serializable]
     public class SizeWeight
     {
-        public DinoSizeType sizeType = DinoSizeType.Normal;
+        public DinoSizeAsset sizeAsset;
+        [HideInInspector] public DinoSizeType sizeType = DinoSizeType.Normal;
         public float weight = 1f;
     }
 
@@ -71,6 +72,27 @@ public class DinoSpawnTable : ScriptableObject
             last = v.variant;
             r -= v.weight;
             if (r <= 0f) return v.variant;
+        }
+        return last;
+    }
+
+    public DinoSizeAsset PickSizeAsset()
+    {
+        if (sizes == null || sizes.Count == 0) return null;
+        float total = 0f;
+        for (int i = 0; i < sizes.Count; i++)
+            if (sizes[i] != null && sizes[i].sizeAsset != null && sizes[i].weight > 0f) total += sizes[i].weight;
+        if (total <= 0f) return null;
+
+        float r = UnityEngine.Random.value * total;
+        DinoSizeAsset last = null;
+        for (int i = 0; i < sizes.Count; i++)
+        {
+            SizeWeight sw = sizes[i];
+            if (sw == null || sw.sizeAsset == null || sw.weight <= 0f) continue;
+            last = sw.sizeAsset;
+            r -= sw.weight;
+            if (r <= 0f) return sw.sizeAsset;
         }
         return last;
     }

@@ -34,6 +34,42 @@ public class DinoData : ScriptableObject
     [Tooltip("Dành cho Dino ăn cỏ: bật nếu muốn con này hết Stamina trước khi tame xong sẽ giết người chơi thay vì hất văng đi.")]
     public bool killOnStaminaEmptyIfUntamed = false;
 
+    [Header("Cutscene Giết Người Chơi (Khi hết Stamina)")]
+    [Tooltip("Chọn trực tiếp 1 kiểu chết cố định cho loài Dino này, hoặc để AutoBySpecies để lấy theo các ô tích chọn bên dưới.")]
+    public DinoKillCutsceneStyle killCutsceneStyle = DinoKillCutsceneStyle.AutoBySpecies;
+    [Tooltip("Khi để AutoBySpecies: cho phép kiểu 1 - Vồ & Cạp khi người chơi nằm ngửa.")]
+    public bool allowKillPounceBite = true;
+    [Tooltip("Khi để AutoBySpecies: cho phép kiểu 2 - Hất khỏi lưng rồi đớp nuốt chửng vào bụng.")]
+    public bool allowKillTossSwallow = true;
+    [Tooltip("Khi để AutoBySpecies: cho phép kiểu 3 - Giẫm bẹp xuống đất.")]
+    public bool allowKillStomp = false;
+    [Tooltip("Góc quay camera ưu tiên khi loài Dino này giết người chơi (RandomMultiAngle = đổi nhiều góc quay điện ảnh).")]
+    public DinoKillCameraStyle killCameraStyle = DinoKillCameraStyle.RandomMultiAngle;
+
+    public DinoKillCutsceneStyle ResolveKillStyle()
+    {
+        if (killCutsceneStyle != DinoKillCutsceneStyle.AutoBySpecies)
+            return killCutsceneStyle;
+
+        DinoKillCutsceneStyle[] pool = new DinoKillCutsceneStyle[3];
+        int count = 0;
+        if (allowKillPounceBite) pool[count++] = DinoKillCutsceneStyle.PounceAndBite;
+        if (allowKillTossSwallow) pool[count++] = DinoKillCutsceneStyle.TossAndSwallow;
+        if (allowKillStomp) pool[count++] = DinoKillCutsceneStyle.Stomp;
+
+        if (count > 0)
+            return pool[Random.Range(0, count)];
+
+        // Dự phòng theo loài & kích thước nếu người dùng bỏ tích cả 3 ô
+        if (diet == DinoDiet.Herbivore)
+            return DinoKillCutsceneStyle.Stomp;
+        if (size <= DinoSpeciesSize.SmallMedium)
+            return DinoKillCutsceneStyle.PounceAndBite;
+        if (size >= DinoSpeciesSize.VeryLarge)
+            return Random.value < 0.5f ? DinoKillCutsceneStyle.TossAndSwallow : DinoKillCutsceneStyle.Stomp;
+        return Random.value < 0.5f ? DinoKillCutsceneStyle.PounceAndBite : DinoKillCutsceneStyle.TossAndSwallow;
+    }
+
     [Header("Giới hạn xuất hiện trên đường chạy")]
     [Tooltip("Số lượng tối đa loài này xuất hiện cùng lúc trên đường chạy (0 = không giới hạn). Con đã bắt (Tame xong) không tính vào giới hạn này nên sẽ tự bổ sung con mới.")]
     [Min(0)] public int maxAliveOnTrack = 0;
@@ -59,4 +95,46 @@ public class DinoData : ScriptableObject
     [Min(0.5f)] public float maxSeparationPush = 2.5f;
     [Tooltip("Tắt: Dino nhỏ không tự dạt ra trước mặt Carnivore đang cưỡi để người chơi ăn thịt dễ hơn.")]
     public bool yieldToRiddenCarnivore = false;
+
+    [Header("Phần thưởng Dino Index (để 0 sẽ tự tính theo Base Money & Required Stamina)")]
+    [Min(0)] public double indexRewardCash = 0;
+    [Min(0f)] public float indexRewardStamina = 0f;
+    [Min(0)] public double indexAllSizesRewardCash = 0;
+    [Min(0)] public double indexAllVariantsRewardCash = 0;
+
+    public double EffectiveIndexRewardCash
+    {
+        get
+        {
+            if (indexRewardCash > 0) return indexRewardCash;
+            return System.Math.Round(baseMoney * DinoMultipliers.Of(rarity) * 100.0);
+        }
+    }
+
+    public float EffectiveIndexRewardStamina
+    {
+        get
+        {
+            if (indexRewardStamina > 0f) return indexRewardStamina;
+            return Mathf.Max(5f, Mathf.Round(requiredStamina * 2f));
+        }
+    }
+
+    public double EffectiveAllSizesRewardCash
+    {
+        get
+        {
+            if (indexAllSizesRewardCash > 0) return indexAllSizesRewardCash;
+            return EffectiveIndexRewardCash * 2.0;
+        }
+    }
+
+    public double EffectiveAllVariantsRewardCash
+    {
+        get
+        {
+            if (indexAllVariantsRewardCash > 0) return indexAllVariantsRewardCash;
+            return EffectiveIndexRewardCash * 4.0;
+        }
+    }
 }

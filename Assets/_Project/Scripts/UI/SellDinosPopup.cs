@@ -163,6 +163,7 @@ public class SellDinosPopup : MonoBehaviour
         TrySubscribe();
         if (PenPanel.Instance != null) PenPanel.Instance.Hide();
         if (InventoryPopup.Instance != null) InventoryPopup.Instance.Hide();
+        if (DinoIndexPopup.Instance != null) DinoIndexPopup.Instance.Hide();
 
         if (modalBackdrop != null)
         {
@@ -713,7 +714,7 @@ public class SellDinosPopup : MonoBehaviour
                 ? "<color=#FFD94A>" + d.variant.displayName.ToUpperInvariant() + "</color>"
                 : "";
             string sTag = !string.IsNullOrEmpty(d.SizeTag)
-                ? "<color=#" + DinoColors.Hex(DinoSizeModifiers.ColorOf(d.sizeType)) + ">" + d.SizeTag + "</color>"
+                ? "<color=#" + DinoColors.Hex(d.SizeColor) + ">" + d.SizeTag + "</color>"
                 : "";
             tagsTmp.text = string.IsNullOrEmpty(vTag) ? sTag : (string.IsNullOrEmpty(sTag) ? vTag : vTag + " " + sTag);
         }

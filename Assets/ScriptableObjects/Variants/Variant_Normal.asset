@@ -15,6 +15,7 @@ MonoBehaviour:
   displayName: Normal
   isNormal: 1
   moneyMultiplier: 1
+  staminaMultiplier: 0
   useTint: 0
   tint: {r: 1, g: 1, b: 1, a: 1}
   vfxPrefab: {fileID: 0}

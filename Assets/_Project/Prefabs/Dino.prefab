@@ -160,8 +160,8 @@ MonoBehaviour:
   herbivoreHopHeight: 0.55
   herbivoreHopDurationMin: 0.2
   herbivoreHopDurationMax: 0.32
-  herbivoreErraticYawAngle: 10
-  herbivoreControlScale: 0.25
+  herbivoreErraticYawAngle: 0.5
+  herbivoreControlScale: 0.5
   herbivoreHopTurnSnappiness: 10
   herbivoreHopPitchTilt: 12
   herbivoreHopRollTilt: 10

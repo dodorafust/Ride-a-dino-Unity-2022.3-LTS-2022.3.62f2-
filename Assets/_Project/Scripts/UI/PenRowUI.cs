@@ -28,11 +28,13 @@ public class PenRowUI : MonoBehaviour
         {
             rideButton.onClick.RemoveAllListeners();
             rideButton.onClick.AddListener(delegate { if (onRide != null) onRide(d); });
+            UIEffectUtil.AttachButtonBounce(this, rideButton);
         }
         if (unequipButton != null)
         {
             unequipButton.onClick.RemoveAllListeners();
             unequipButton.onClick.AddListener(delegate { if (onUnequip != null) onUnequip(d); });
+            UIEffectUtil.AttachButtonBounce(this, unequipButton);
         }
     }
 }

@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Fossil Triceratop_Override
+  m_Controller: {fileID: 9100000, guid: a1b2c3d4e5f6478990123456789abcde, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: -623603649343465320, guid: 23cf5542292ca1c408b0995180877a87, type: 3}
+    m_OverrideClip: {fileID: -623603649343465320, guid: b5160e764e4b7ec4c873203d43cb6b8e, type: 3}
+  - m_OriginalClip: {fileID: -623603649343465320, guid: d84c06d82f1ff5e48aef0f8f728f2b05, type: 3}
+    m_OverrideClip: {fileID: -623603649343465320, guid: 23bb9c3bc81ada446a6f19df35b3a3e3, type: 3}

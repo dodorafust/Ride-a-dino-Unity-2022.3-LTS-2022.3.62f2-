@@ -18,6 +18,34 @@ public enum DinoSpeciesSize
 public enum DinoDiet { Herbivore = 0, Carnivore = 1 }
 public enum DinoSizeType { Normal = 0, Tiny = 1, Big = 2, Huge = 3, Giant = 4, Colossal = 5 }
 
+public enum DinoKillCutsceneStyle
+{
+    AutoBySpecies = 0,     // Tự chọn theo loài / các ô tích chọn bên dưới
+    PounceAndBite = 1,     // Kiểu 1: Vồ & Cạp khi người chơi nằm ngửa
+    TossAndSwallow = 2,    // Kiểu 2: Hất khỏi lưng rồi đớp nuốt chửng vào bụng
+    Stomp = 3              // Kiểu 3: Giẫm bẹp xuống đất
+}
+
+public enum DinoKillCameraStyle
+{
+    RandomMultiAngle = 0,  // Đa góc quay điện ảnh (chuyển cắt cảnh tự động)
+    LowAnglePredator = 1,  // Góc thấp sát đất ngước lên Dino
+    CloseUpVictimPOV = 2,  // Góc cận mặt / hàm Dino từ phía nạn nhân
+    SideOrbitAction = 3    // Góc nghiêng xoay vòng quanh cảnh hành động
+}
+
+[System.Serializable]
+public class DinoSizeTypeConfig
+{
+    public DinoSizeType sizeType;
+    public string label;
+    [Min(0.1f)] public float scaleMultiplier = 1f;
+    [Min(0.1f)] public float moneyMultiplier = 1f;
+    [Min(0.1f)] public float staminaMultiplier = 1f;
+    public int rankBonus = 0;
+    public Color tagColor = Color.white;
+}
+
 public static class DinoSizeModifiers
 {
     static readonly float[] ScaleMul   = { 1.0f, 0.65f, 1.30f, 1.60f, 1.95f, 2.40f };
@@ -25,6 +53,53 @@ public static class DinoSizeModifiers
     static readonly float[] StaminaMul = { 1.0f, 1.15f, 1.30f, 1.60f, 2.00f, 2.60f };
     static readonly int[]   SizeBonus  = { 0, -1, 1, 2, 3, 4 };
     static readonly string[] Labels    = { "", "TINY", "BIG", "HUGE", "GIANT", "COLOSSAL" };
+    static readonly Color[] Colors     = {
+        Color.white,
+        new Color(0.58f, 0.90f, 1.0f),
+        new Color(0.45f, 1.0f, 0.45f),
+        new Color(1.0f, 0.85f, 0.25f),
+        new Color(1.0f, 0.55f, 0.18f),
+        new Color(1.0f, 0.25f, 0.25f)
+    };
+
+    public static int MinRankDiffToEat = 4;
+
+    public static DinoSizeTypeConfig[] CreateDefaultConfigs()
+    {
+        DinoSizeTypeConfig[] arr = new DinoSizeTypeConfig[6];
+        for (int i = 0; i < 6; i++)
+        {
+            arr[i] = new DinoSizeTypeConfig
+            {
+                sizeType = (DinoSizeType)i,
+                label = Labels[i],
+                scaleMultiplier = ScaleMul[i],
+                moneyMultiplier = MoneyMul[i],
+                staminaMultiplier = StaminaMul[i],
+                rankBonus = SizeBonus[i],
+                tagColor = Colors[i]
+            };
+        }
+        return arr;
+    }
+
+    public static void ApplyConfigs(DinoSizeTypeConfig[] configs)
+    {
+        if (configs == null) return;
+        for (int i = 0; i < configs.Length; i++)
+        {
+            DinoSizeTypeConfig c = configs[i];
+            if (c == null) continue;
+            int idx = (int)c.sizeType;
+            if (idx < 0 || idx >= ScaleMul.Length) continue;
+            ScaleMul[idx] = Mathf.Max(0.1f, c.scaleMultiplier);
+            MoneyMul[idx] = Mathf.Max(0.1f, c.moneyMultiplier);
+            StaminaMul[idx] = Mathf.Max(0.1f, c.staminaMultiplier);
+            SizeBonus[idx] = c.rankBonus;
+            Labels[idx] = c.label ?? "";
+            Colors[idx] = c.tagColor;
+        }
+    }
 
     public static float ScaleOf(DinoSizeType s)   { return ScaleMul[(int)s]; }
     public static float MoneyOf(DinoSizeType s)   { return MoneyMul[(int)s]; }
@@ -39,15 +114,8 @@ public static class DinoSizeModifiers
 
     public static Color ColorOf(DinoSizeType s)
     {
-        switch (s)
-        {
-            case DinoSizeType.Tiny:     return new Color(0.58f, 0.90f, 1.0f);
-            case DinoSizeType.Big:      return new Color(0.45f, 1.0f, 0.45f);
-            case DinoSizeType.Huge:     return new Color(1.0f, 0.85f, 0.25f);
-            case DinoSizeType.Giant:    return new Color(1.0f, 0.55f, 0.18f);
-            case DinoSizeType.Colossal: return new Color(1.0f, 0.25f, 0.25f);
-            default:                    return Color.white;
-        }
+        int idx = (int)s;
+        return (idx >= 0 && idx < Colors.Length) ? Colors[idx] : Color.white;
     }
 
     public static int CombinedRank(DinoSpeciesSize baseSize, DinoSizeType sizeType)

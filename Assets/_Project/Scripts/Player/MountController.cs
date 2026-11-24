@@ -52,6 +52,7 @@ public class MountController : MonoBehaviour
     Animator visualAnim;
     Transform seatBone;
     Vector3 seatOffsetScaled;
+    float baseVisualScale = 1f;
     OwnedDino promptDino;
     float boostTimer;
     bool wasRunActive;
@@ -109,6 +110,11 @@ public class MountController : MonoBehaviour
         {
             pos = Vector3.zero;
             return false;
+        }
+        if (SlotDino != null && SlotDino.data != null)
+        {
+            float seatSizeMul = SlotDino.SizeSeatOffsetMultiplier(SlotDino.data.seatSizeScaleWeight);
+            seatOffsetScaled = SlotDino.data.seatOffset * (baseVisualScale * seatSizeMul);
         }
         if (seatBone != null)
             pos = seatBone.position + visual.transform.TransformVector(seatOffsetScaled);
@@ -177,8 +183,8 @@ public class MountController : MonoBehaviour
         seatBone = DinoView.FindSeatBone(built != null ? built.transform : null, d.data.seatBoneName);
         float visualScale = built != null ? Mathf.Max(0.1f, built.transform.localScale.y) : Mathf.Max(0.1f, d.data.modelScale * d.SizeScaleMultiplier);
         float sizeMul = Mathf.Max(0.1f, d.SizeScaleMultiplier);
-        float baseVisualScale = visualScale / sizeMul;
-        float seatSizeMul = DinoSizeModifiers.SeatOffsetMultiplier(d.sizeType, d.data.seatSizeScaleWeight);
+        baseVisualScale = visualScale / sizeMul;
+        float seatSizeMul = d.SizeSeatOffsetMultiplier(d.data.seatSizeScaleWeight);
         seatOffsetScaled = d.data.seatOffset * (baseVisualScale * seatSizeMul);
     }
 

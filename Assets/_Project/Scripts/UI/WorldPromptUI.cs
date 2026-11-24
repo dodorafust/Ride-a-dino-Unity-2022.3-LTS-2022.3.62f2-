@@ -28,7 +28,11 @@ public class WorldPromptUI : MonoBehaviour
 
     void Awake()
     {
-        if (button != null) button.onClick.AddListener(Tap);
+        if (button != null)
+        {
+            button.onClick.AddListener(Tap);
+            UIEffectUtil.AttachButtonBounce(this, button);
+        }
         SetupHandIcon();
     }
 

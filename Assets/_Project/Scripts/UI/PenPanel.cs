@@ -35,6 +35,7 @@ public class PenPanel : MonoBehaviour
         {
             if (InventoryPopup.Instance != null) InventoryPopup.Instance.Hide();
             if (SellDinosPopup.Instance != null) SellDinosPopup.Instance.Hide();
+            if (DinoIndexPopup.Instance != null) DinoIndexPopup.Instance.Hide();
         }
         gameObject.SetActive(open);
         if (open)
@@ -45,9 +46,21 @@ public class PenPanel : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        if (equipBestButton != null) equipBestButton.onClick.AddListener(delegate { if (pen != null) pen.EquipBest(); });
-        if (collectButton != null) collectButton.onClick.AddListener(delegate { if (pen != null) pen.Collect(true); });
-        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (equipBestButton != null)
+        {
+            equipBestButton.onClick.AddListener(delegate { if (pen != null) pen.EquipBest(); });
+            UIEffectUtil.AttachButtonBounce(this, equipBestButton);
+        }
+        if (collectButton != null)
+        {
+            collectButton.onClick.AddListener(delegate { if (pen != null) pen.Collect(true); });
+            UIEffectUtil.AttachButtonBounce(this, collectButton);
+        }
+        if (closeButton != null)
+        {
+            closeButton.onClick.AddListener(Hide);
+            UIEffectUtil.AttachButtonBounce(this, closeButton);
+        }
     }
 
     // Bảng để mở sẵn trong scene cho dễ chỉnh; vào Play thì tự ẩn

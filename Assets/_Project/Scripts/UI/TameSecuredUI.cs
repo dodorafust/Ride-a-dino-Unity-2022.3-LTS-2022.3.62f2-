@@ -494,7 +494,7 @@ public class TameSecuredUI : MonoBehaviour
             if (!string.IsNullOrEmpty(d.SizeTag))
             {
                 badgeTmp.text = d.SizeTag;
-                badgeTmp.color = DinoSizeModifiers.ColorOf(d.sizeType);
+                badgeTmp.color = d.SizeColor;
             }
             else if (d.variant != null && !d.variant.isNormal)
             {

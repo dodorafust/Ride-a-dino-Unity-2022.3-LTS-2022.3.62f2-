@@ -17,4 +17,9 @@ public class BiomeData : ScriptableObject
     public bool overrideLight = false;
     public Color lightColor = Color.white;
     public float lightIntensity = 1f;
+
+    [Header("Phần thưởng hoàn thành Biome Index (để 0 sẽ tự tính theo các Dino trong Biome)")]
+    [Min(0)] public double indexCompleteCash = 0;
+    [Min(0f)] public float indexCompleteStamina = 0f;
+    public Sprite saddleRewardIcon;
 }

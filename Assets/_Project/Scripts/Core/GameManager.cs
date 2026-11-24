@@ -28,8 +28,15 @@ public class GameManager : MonoBehaviour
     public Color staminaColor = new Color(1f, 0.9f, 0.2f);
     public Color cashColor = new Color(0.4f, 1f, 0.4f);
 
+    [Header("Quy chuẩn Kích Thước (Ăn thịt / Giẫm nát)")]
+    [Tooltip("Chênh lệch điểm kích thước tối thiểu để ăn thịt / giẫm nát (1 bậc loài = 2 điểm, 2 bậc loài = 4 điểm). Các hệ kích thước chỉnh riêng trong Assets/ScriptableObjects/Sizes/")]
+    [Min(1)] public int minRankDiffToEat = 4;
+
     public double Cash { get; private set; }
-    public float Stamina { get; private set; }
+    public float BaseStamina { get; private set; }
+    public AuraData EquippedAura { get; private set; }
+    public float AuraStaminaMultiplier => GetAuraBuffMultiplier(AuraBuffType.StaminaMultiplier);
+    public float Stamina => BaseStamina * AuraStaminaMultiplier;
     public Inventory Inventory { get; private set; }
 
     public event Action StatsChanged;
@@ -40,13 +47,24 @@ public class GameManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        SyncSizeConfigs();
 #if UNITY_ANDROID || UNITY_IOS
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = 60;
 #endif
         Inventory = new Inventory();
         Cash = startCash;
-        Stamina = startStamina;
+        BaseStamina = startStamina;
+    }
+
+    void OnValidate()
+    {
+        SyncSizeConfigs();
+    }
+
+    void SyncSizeConfigs()
+    {
+        DinoSizeModifiers.MinRankDiffToEat = Mathf.Max(1, minRankDiffToEat);
     }
 
     void Update()
@@ -100,8 +118,33 @@ public class GameManager : MonoBehaviour
         HudController.Say("Slot Q: " + chosen.displayName + " (" + targetSize + ")", 1.5f);
     }
 
-    public void AddCash(double amount) { Cash += amount; Fire(); }
-    public void AddStamina(float amount) { Stamina += amount; Fire(); }
+    public void AddCash(double amount)
+    {
+        float cashMul = GetAuraBuffMultiplier(AuraBuffType.CashMultiplier);
+        Cash += amount * cashMul;
+        Fire();
+    }
+
+    public void AddStamina(float amount)
+    {
+        BaseStamina += amount;
+        Fire();
+    }
+
+    public float GetAuraBuffMultiplier(AuraBuffType buffType)
+    {
+        if (EquippedAura == null) return 1f;
+        return Mathf.Max(0.1f, EquippedAura.GetTotalMultiplier(buffType));
+    }
+
+    public void SetEquippedAura(AuraData aura)
+    {
+        if (EquippedAura == aura) return;
+        EquippedAura = aura;
+        if (PlayerAuraController.Instance != null)
+            PlayerAuraController.Instance.ApplyAura(aura);
+        Fire();
+    }
 
     public bool TrySpend(double amount)
     {

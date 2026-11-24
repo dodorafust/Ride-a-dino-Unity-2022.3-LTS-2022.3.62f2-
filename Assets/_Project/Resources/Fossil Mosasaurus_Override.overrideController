@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Fossil Mosasaurus_Override
+  m_Controller: {fileID: 9100000, guid: a1b2c3d4e5f6478990123456789abcde, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: -623603649343465320, guid: 23cf5542292ca1c408b0995180877a87, type: 3}
+    m_OverrideClip: {fileID: -623603649343465320, guid: da8dbf7b5853cc04a83cd4164d4db18d, type: 3}
+  - m_OriginalClip: {fileID: -623603649343465320, guid: d84c06d82f1ff5e48aef0f8f728f2b05, type: 3}
+    m_OverrideClip: {fileID: -623603649343465320, guid: 4bc612fc493a31243ace12688d26746c, type: 3}

@@ -70,7 +70,7 @@ public static class DinoView
         }
         if (!string.IsNullOrEmpty(owned.SizeTag))
         {
-            string sTag = "<color=#" + DinoColors.Hex(DinoSizeModifiers.ColorOf(owned.sizeType)) + ">" + owned.SizeTag + "</color>";
+            string sTag = "<color=#" + DinoColors.Hex(owned.SizeColor) + ">" + owned.SizeTag + "</color>";
             tagsLine = string.IsNullOrEmpty(tagsLine) ? sTag : tagsLine + "  " + sTag;
         }
         if (owned.trait != DinoTrait.None)

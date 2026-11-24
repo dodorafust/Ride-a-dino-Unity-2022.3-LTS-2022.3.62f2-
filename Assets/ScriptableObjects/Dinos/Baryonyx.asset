@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a65dab511e384d988eda30e8a114b, type: 3}
+  m_Name: Baryonyx
+  m_EditorClassIdentifier: 
+  displayName: Baryonyx
+  rarity: 3
+  size: 3
+  diet: 1
+  zone: 3
+  icon: {fileID: 0}
+  modelPrefab: {fileID: 3928242901813333463, guid: 3407a00942450944ca9e2d62848bd0b6, type: 3}
+  animatorController: {fileID: 22100000, guid: 6f5b4ee4d18e50049ba4365884eca5c5, type: 2}
+  modelScale: 1.8
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 0.8, z: 0}
+  seatSizeScaleWeight: 0.55
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
+  baseMoney: 20
+  requiredStamina: 800
+  tameTime: 8
+  runSpeed: 28
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  killCutsceneStyle: 0
+  allowKillPounceBite: 1
+  allowKillTossSwallow: 0
+  allowKillStomp: 0
+  killCameraStyle: 0
+  maxAliveOnTrack: 4
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 4.5}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0
+  indexRewardCash: 0
+  indexRewardStamina: 0
+  indexAllSizesRewardCash: 0
+  indexAllVariantsRewardCash: 0

@@ -89,7 +89,9 @@ public class CameraRig : MonoBehaviour
         bool riding = state == PlayerState.Riding || (MountController.Instance != null && MountController.Instance.Mounted);
 
         // --- Xoay (kéo ngón tay / chuột) ---
-        bool modalOpen = SellDinosPopup.Instance != null && SellDinosPopup.Instance.Visible;
+        bool modalOpen = (SellDinosPopup.Instance != null && SellDinosPopup.Instance.Visible)
+                      || (DinoIndexPopup.Instance != null && DinoIndexPopup.Instance.Visible)
+                      || (AurasPopup.Instance != null && AurasPopup.Instance.Visible);
         Vector2 look = modalOpen ? Vector2.zero : GameInput.ConsumeLook() * rotateSpeed;
         if (modalOpen) GameInput.ConsumeLook();
         if (look.sqrMagnitude > 0f)

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 121cb915ff167cd41b26803170d41840, type: 3}
+  m_Name: Aura_05_Violet
+  m_EditorClassIdentifier: 
+  auraId: violet_aura
+  displayName: Violet Aura
+  level: 5
+  rarity: 2
+  priceCash: 15000000
+  unlockedByDefault: 0
+  icon: {fileID: 0}
+  auraColor: {r: 0.72, g: 0.26, b: 0.98, a: 1}
+  cardTopColor: {r: 0.8, g: 0.38, b: 1, a: 1}
+  cardBottomColor: {r: 0.44, g: 0.14, b: 0.72, a: 1}
+  staminaMultiplier: 4
+  customBuffDisplayText: 
+  extraBuffs: []
+  vfxPrefab: {fileID: 0}
+  vfxPositionOffset: {x: 0, y: 0, z: 0}
+  vfxRotationOffset: {x: 0, y: 0, z: 0}
+  vfxScale: {x: 1, y: 1, z: 1}
+  stationaryVisibilityMode: 0

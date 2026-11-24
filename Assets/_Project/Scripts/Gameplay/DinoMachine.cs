@@ -232,7 +232,8 @@ public class DinoMachine : MonoBehaviour, IUpgradable
 
             PlayerController p = PlayerController.Instance;
             Vector3 pos = (p != null ? p.transform.position : transform.position) + staminaPopupOffset;
-            GameManager.Instance.ShowPopup(pos, "+" + NumberFormat.Small(gain), PopupKind.Stamina);
+            float effectiveGain = gain * GameManager.Instance.AuraStaminaMultiplier;
+            GameManager.Instance.ShowPopup(pos, "+" + NumberFormat.Small(effectiveGain), PopupKind.Stamina);
         }
     }
 

@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a65dab511e384d988eda30e8a114b, type: 3}
+  m_Name: Giganotosaurus
+  m_EditorClassIdentifier: 
+  displayName: Giganotosaurus
+  rarity: 4
+  size: 5
+  diet: 1
+  zone: 4
+  icon: {fileID: 0}
+  modelPrefab: {fileID: 8837215375275281759, guid: 442eef6c4cfa1024a890df11293c26d0, type: 3}
+  animatorController: {fileID: 22100000, guid: e2b2031497d91c84b8bc9ecbbf645346, type: 2}
+  modelScale: 2.4
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.2, z: 0}
+  seatSizeScaleWeight: 0.35
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
+  baseMoney: 80
+  requiredStamina: 800
+  tameTime: 8
+  runSpeed: 30
+  riddenSpeedMultiplier: 1
+  killOnStaminaEmptyIfUntamed: 0
+  killCutsceneStyle: 0
+  allowKillPounceBite: 1
+  allowKillTossSwallow: 1
+  allowKillStomp: 1
+  killCameraStyle: 0
+  maxAliveOnTrack: 3
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 4.5}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0
+  indexRewardCash: 0
+  indexRewardStamina: 0
+  indexAllSizesRewardCash: 0
+  indexAllVariantsRewardCash: 0
