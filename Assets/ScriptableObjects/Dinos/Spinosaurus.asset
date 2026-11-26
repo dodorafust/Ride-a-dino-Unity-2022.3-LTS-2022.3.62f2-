@@ -13,24 +13,24 @@ MonoBehaviour:
   m_Name: Spinosaurus
   m_EditorClassIdentifier: 
   displayName: Spinosaurus
-  rarity: 4
+  rarity: 6
   size: 5
   diet: 1
-  zone: 4
+  zone: 6
   icon: {fileID: 0}
   modelPrefab: {fileID: 4914753992923510610, guid: f2e6f910ba20ccf46b495e2511a76b9a, type: 3}
   animatorController: {fileID: 22100000, guid: 0bca350934899954695558608e541b57, type: 2}
   modelScale: 2.8
   seatBoneName: spine
   seatOffset: {x: 0, y: 1, z: 1.4}
-  seatSizeScaleWeight: 0.35
+  seatSizeScaleWeight: 0.845
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 80
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 30
-  riddenSpeedMultiplier: 1
+  baseMoney: 9000000
+  requiredStamina: 5000000
+  tameTime: 8.5
+  runSpeed: 33
+  riddenSpeedMultiplier: 1.1
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 450000000
+  indexRewardStamina: 450000
+  indexAllSizesRewardCash: 900000000
+  indexAllVariantsRewardCash: 3600000000

@@ -24,3 +24,6 @@ MonoBehaviour:
   overrideLight: 0
   lightColor: {r: 0.9, g: 1, b: 0.92, a: 1}
   lightIntensity: 0.95
+  indexCompleteCash: 90000
+  indexCompleteStamina: 425
+  saddleRewardIcon: {fileID: 0}

@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Galimimus
   m_EditorClassIdentifier: 
   displayName: Galimimus
-  rarity: 2
+  rarity: 0
   size: 2
   diet: 0
-  zone: 2
+  zone: 1
   icon: {fileID: 0}
   modelPrefab: {fileID: 100001, guid: b2c3d4e5f6a748909123456789abcdef, type: 3}
   animatorController: {fileID: 0}
@@ -27,10 +27,10 @@ MonoBehaviour:
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
   baseMoney: 6
-  requiredStamina: 40
-  tameTime: 5
-  runSpeed: 35
-  riddenSpeedMultiplier: 1
+  requiredStamina: 22
+  tameTime: 4
+  runSpeed: 24
+  riddenSpeedMultiplier: 1.05
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 300
+  indexRewardStamina: 20
+  indexAllSizesRewardCash: 600
+  indexAllVariantsRewardCash: 2400

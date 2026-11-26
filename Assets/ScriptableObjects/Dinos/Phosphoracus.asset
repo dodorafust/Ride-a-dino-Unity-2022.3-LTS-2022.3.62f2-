@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a65dab511e384d988eda30e8a114b, type: 3}
+  m_Name: Phosphoracus
+  m_EditorClassIdentifier: 
+  displayName: Phosphoracus
+  rarity: 5
+  size: 3
+  diet: 0
+  zone: 5
+  icon: {fileID: 0}
+  modelPrefab: {fileID: 4102850430552627965, guid: 87bd308137f139349b60c220f72e3d2e, type: 3}
+  animatorController: {fileID: 22100000, guid: 2681f2db7914cf74eb02bdf0563be0db, type: 2}
+  modelScale: 1.4
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.3, z: 0.5}
+  seatSizeScaleWeight: 0.35
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
+  baseMoney: 1100000
+  requiredStamina: 450000
+  tameTime: 8
+  runSpeed: 33
+  riddenSpeedMultiplier: 1.1
+  killOnStaminaEmptyIfUntamed: 0
+  killCutsceneStyle: 0
+  allowKillPounceBite: 1
+  allowKillTossSwallow: 1
+  allowKillStomp: 0
+  killCameraStyle: 0
+  maxAliveOnTrack: 0
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 1.4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 1.6}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0
+  indexRewardCash: 55000000
+  indexRewardStamina: 40000
+  indexAllSizesRewardCash: 110000000
+  indexAllVariantsRewardCash: 440000000

@@ -28,7 +28,7 @@ public class AurasPopup : MonoBehaviour
     [Header("3. Màu sắc & Giao diện Thẻ")]
     public bool hideOnStart = true;
     public bool closeOnBackdropClick = false;
-    public Color modalDimColor = new Color(0f, 0f, 0f, 0.58f);
+    public Color modalDimColor = new Color(0f, 0f, 0f, 0.8352941f);
     public Color headerBarColor = new Color(0.74f, 0.72f, 0.94f, 1f);
     public Color panelBgColor = new Color(0.18f, 0.17f, 0.22f, 0.98f);
     public Vector2 cardSize = new Vector2(236f, 470f);
@@ -149,7 +149,6 @@ public class AurasPopup : MonoBehaviour
             StopCoroutine(popRoutine);
             popRoutine = null;
         }
-        if (panelRoot != null) panelRoot.localScale = Vector3.one;
         SetVisibleImmediate(false);
     }
 
@@ -161,7 +160,11 @@ public class AurasPopup : MonoBehaviour
 
     void SetVisibleImmediate(bool v)
     {
-        if (modalBackdrop != null) modalBackdrop.gameObject.SetActive(v);
+        if (modalBackdrop != null)
+        {
+            if (v) modalBackdrop.color = modalDimColor;
+            modalBackdrop.gameObject.SetActive(v);
+        }
         if (panelRoot != null) panelRoot.gameObject.SetActive(v);
     }
 
@@ -833,6 +836,7 @@ public class AurasPopup : MonoBehaviour
             case Rarity.Legendary: return new Color(1.0f, 0.82f, 0.22f, 1f);
             case Rarity.Mythic: return new Color(1.0f, 0.28f, 0.36f, 1f);
             case Rarity.Secret: return new Color(0.25f, 1.0f, 0.92f, 1f);
+            case Rarity.Eternal: return new Color(0.95f, 0.35f, 0.95f, 1f);
             case Rarity.Divine: return new Color(1.0f, 0.95f, 0.65f, 1f);
             default: return Color.white;
         }

@@ -16,7 +16,7 @@ MonoBehaviour:
   rarity: 3
   size: 4
   diet: 0
-  zone: 2
+  zone: 4
   icon: {fileID: 0}
   modelPrefab: {fileID: 151634899119871877, guid: 588f5fb8e94581445b944c56d307fdb5, type: 3}
   animatorController: {fileID: 22100000, guid: 62b7652bdf6c4af4d900d1c714c49e40, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.52
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 55
-  requiredStamina: 600
-  tameTime: 6
+  baseMoney: 45000
+  requiredStamina: 22000
+  tameTime: 6.8
   runSpeed: 24
-  riddenSpeedMultiplier: 1
+  riddenSpeedMultiplier: 1.02
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 2250000
+  indexRewardStamina: 1900
+  indexAllSizesRewardCash: 4500000
+  indexAllVariantsRewardCash: 18000000

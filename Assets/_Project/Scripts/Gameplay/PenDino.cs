@@ -8,7 +8,7 @@ public class PenDino : MonoBehaviour
     [Min(0.5f)] public float animReferenceSpeed = 4.5f;
     public float popupInterval = 1f;
     [Header("Vị trí chữ & tiền trên đầu Dino")]
-    public float labelHeadPadding = 0.6f;
+    public float labelHeadPadding = 1.4f;
     public float moneyPopupHeadPadding = 0.35f;
 
     public OwnedDino Owned { get; private set; }

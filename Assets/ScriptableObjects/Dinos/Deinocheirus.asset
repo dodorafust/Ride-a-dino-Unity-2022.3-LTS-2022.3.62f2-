@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.55
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 80
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 25
-  riddenSpeedMultiplier: 1
+  baseMoney: 105000
+  requiredStamina: 46000
+  tameTime: 7.2
+  runSpeed: 28
+  riddenSpeedMultiplier: 1.05
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 5250000
+  indexRewardStamina: 3900
+  indexAllSizesRewardCash: 10500000
+  indexAllVariantsRewardCash: 42000000

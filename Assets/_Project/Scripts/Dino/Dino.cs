@@ -29,10 +29,22 @@ public class Dino : MonoBehaviour
     public float wallHitRadius = 0.7f;             // bán kính hình cầu kiểm tra & trượt tường (không bị kẹt góc như hộp)
     public float wallCrashDelay = 2f;              // giữ trạng thái húc tường liên tục ngần này giây mới chết
 
+    [Header("Bám mặt đất & Trọng lực")]
+    public float groundGravity = -28f;
+    public float groundStepUpSpeed = 16f;
+    public float groundRayHeight = 2.5f;
+    public float groundRayMaxDist = 20f;
+    [Tooltip("Góc chúi đầu và nghiêng sang bên khi Dino rơi xuống vực.")]
+    public float fallPitchAngle = 52f;
+    public float fallRollAngle = 22f;
+    public float fallTiltSpeed = 3.5f;
+    [Tooltip("Tự hủy Dino hoang nếu rơi quá sâu dưới mức Y này.")]
+    public float wildFallDestroyY = -30f;
+
     [Header("References")]
     public Transform seat;
     public bool autoLabelAboveHead = true;         // tự đặt tên ngay trên đỉnh đầu Dino theo kích thước thật
-    public float labelHeadPadding = 0.65f;         // khoảng cách chữ phía trên đỉnh đầu khi bật autoLabelAboveHead
+    public float labelHeadPadding = 1.8f;         // khoảng cách chữ phía trên đỉnh đầu khi bật autoLabelAboveHead
     public Vector3 labelOffset = new Vector3(0f, 3.8f, 0f);
 
     [Header("Highlight khi được target")]
@@ -74,6 +86,11 @@ public class Dino : MonoBehaviour
     public float carnivoreVictimSpinSpeed = 240f;                 // xoay nhẹ con mồi lúc bị nhấc lên
     public bool carnivoreSpawnDebris = false;                     // bật nếu muốn văng thêm mảnh nhỏ lúc nuốt xong
 
+    [Header("Rung màn hình khi Dino ăn cỏ dẵm vỡ con nhỏ")]
+    [Min(0.5f)] public float trampleShakeMultiplier = 1.5f;
+    [Min(0f)] public float minTrampleShakeIntensity = 0.48f;
+    [Min(0.02f)] public float minTrampleShakeDuration = 0.24f;
+
     [Header("AI Dino hoang dã (khi chưa bị cưỡi)")]
     public float aiLookAhead = 10f;        // tầm nhìn phía trước (m)
     public float aiProbeRadius = 1.1f;     // bán kính tia dò (~ nửa bề ngang Dino)
@@ -83,8 +100,8 @@ public class Dino : MonoBehaviour
     public float aiEdgeMargin = 3f;        // cách mép RunZone bao nhiêu thì lái vào trong
     public float aiWanderAngle = 7f;       // lượn nhẹ cho tự nhiên
     public float aiSenseInterval = 0.1f;
-    public float aiSeparationRadius = 3.2f;
-    public float aiSeparationSpeed = 3f;
+    public float aiSeparationRadius = 4.8f;
+    public float aiSeparationSpeed = 4.2f;
 
     public OwnedDino Owned { get; private set; }
     public DinoData Data { get; private set; }
@@ -148,6 +165,9 @@ public class Dino : MonoBehaviour
     Vector3 baseSeatLocalPos, seatOffsetScaled;
     float visualScale = 1f;
     float wallTouchTimer;
+    float verticalVel;
+    float fallTiltT;
+    float fallRollDir = 1f;
     bool countedInAlive = true;
     bool petReturned;
     Transform visualRoot;
@@ -346,7 +366,13 @@ public class Dino : MonoBehaviour
             Vector3 rootPos = visualRoot != null ? visualRoot.position : transform.position;
             seat.position = rootPos + transform.TransformVector(new Vector3(0f, 1.8f, 0f) + seatOffsetScaled);
         }
-        seat.rotation = transform.rotation;
+        seat.rotation = transform.rotation * GetFallTiltRotation();
+    }
+
+    Quaternion GetFallTiltRotation()
+    {
+        if (fallTiltT <= 0.001f) return Quaternion.identity;
+        return Quaternion.Euler(fallPitchAngle * fallTiltT, 0f, fallRollAngle * fallRollDir * fallTiltT);
     }
 
     void RefreshLabel()
@@ -668,8 +694,8 @@ public class Dino : MonoBehaviour
         Vector3 victimCenter = victim.transform.TransformPoint(victim.bodyCenter);
         float scaleMul = victim.Data != null ? victim.Data.modelScale : 1f;
         int debrisCount = Data != null ? Data.eatDebrisCount : 6;
-        float shakeInt = Data != null ? Data.eatShakeIntensity : 0.25f;
-        float shakeDur = Data != null ? Data.eatShakeDuration : 0.18f;
+        float shakeInt = Mathf.Max(minTrampleShakeIntensity, (Data != null ? Data.eatShakeIntensity : 0.25f) * trampleShakeMultiplier);
+        float shakeDur = Mathf.Max(minTrampleShakeDuration, Data != null ? Data.eatShakeDuration : 0.18f);
         Obstacle.SpawnDinoEatenDebris(victimCenter, transform.forward, scaleMul, debrisCount);
         if (shakeInt > 0f && shakeDur > 0f && CameraRig.Instance != null)
             CameraRig.Instance.Shake(shakeInt, shakeDur);
@@ -800,19 +826,31 @@ public class Dino : MonoBehaviour
         for (int i = 0; i < n; i++)
         {
             Collider col = wallBuf[i];
+            if (col == null || col == selfCol) continue;
+            if (col.gameObject.layer == 2) continue; // Ignore Raycast
+            if (col.GetComponentInParent<DebrisFade>() != null) continue; // bỏ qua mảnh vỡ bay ra
+            if (col.GetComponentInParent<PlayerController>() != null) continue;
+            if (col.GetComponentInParent<Dino>() != null) continue;
+
             Obstacle ob = col.GetComponentInParent<Obstacle>();
             if (ob != null)
             {
                 HandleObstacleHit(ob, c);
                 continue;
             }
-            if (col.GetComponentInParent<Wall>() == null) continue;
-            hitWall = true;
 
-            if (!col.isTrigger && !(col is MeshCollider mc && !mc.convex))
+            bool isWall = col.GetComponentInParent<Wall>() != null;
+            if (isWall) hitWall = true;
+
+            if (col.isTrigger) continue;
+            if (!isWall && col.gameObject.layer == 3) continue; // bỏ qua layer Ground
+
+            if (!(col is MeshCollider mc && !mc.convex))
             {
                 Vector3 closest = col.ClosestPoint(c);
                 Vector3 delta = c - closest;
+                if (!isWall && delta.sqrMagnitude > 0.0001f && Mathf.Abs(delta.normalized.y) >= 0.6f)
+                    continue; // bỏ qua mặt sàn phẳng nếu chưa đặt layer Ground
                 delta.y = 0f;
                 float dist = delta.magnitude;
                 if (dist < targetDist)
@@ -821,6 +859,25 @@ public class Dino : MonoBehaviour
                     Vector3 push = pushDir * (targetDist - dist);
                     transform.position += push;
                     c += push;
+                }
+            }
+            else
+            {
+                // Non-convex MeshCollider (vd: tường FBX map mới): đẩy ngang bằng Raycast 8 hướng
+                for (int rIdx = 0; rIdx < 8; rIdx++)
+                {
+                    float ang = rIdx * 45f * Mathf.Deg2Rad;
+                    Vector3 rayDir = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
+                    if (col.Raycast(new Ray(c, rayDir), out RaycastHit hit, targetDist))
+                    {
+                        if (!isWall && Mathf.Abs(hit.normal.y) >= 0.6f) continue;
+                        Vector3 nFlat = new Vector3(hit.normal.x, 0f, hit.normal.z);
+                        if (nFlat.sqrMagnitude < 0.0001f) nFlat = -rayDir;
+                        else nFlat.Normalize();
+                        Vector3 push = nFlat * (targetDist - hit.distance);
+                        transform.position += push;
+                        c += push;
+                    }
                 }
             }
         }
@@ -835,6 +892,87 @@ public class Dino : MonoBehaviour
             wallTouchTimer = 0f;
             TouchingWall = false;
         }
+    }
+
+    void UpdateGroundFollow(float dt, bool skipVisualTilt)
+    {
+        Vector3 p = transform.position;
+        bool hasGround = TryFindGroundY(p, out float groundY);
+
+        if (!hasGround)
+        {
+            // Không có mặt đất bên dưới (vực) -> rơi tự do & đổ nghiêng
+            if (fallTiltT <= 0.01f) fallRollDir = Random.value < 0.5f ? -1f : 1f;
+            verticalVel += groundGravity * dt;
+            p.y += verticalVel * dt;
+            fallTiltT = Mathf.MoveTowards(fallTiltT, 1f, fallTiltSpeed * dt);
+            transform.position = p;
+        }
+        else if (p.y > groundY + 0.02f)
+        {
+            verticalVel += groundGravity * dt;
+            p.y += verticalVel * dt;
+            bool deepDrop = (p.y - groundY) > 2.2f;
+            fallTiltT = Mathf.MoveTowards(fallTiltT, deepDrop ? 0.8f : 0f, fallTiltSpeed * dt);
+            if (p.y <= groundY)
+            {
+                p.y = groundY;
+                verticalVel = 0f;
+            }
+            transform.position = p;
+        }
+        else if (p.y < groundY - 0.005f)
+        {
+            verticalVel = 0f;
+            fallTiltT = Mathf.MoveTowards(fallTiltT, 0f, fallTiltSpeed * 2f * dt);
+            p.y = Mathf.MoveTowards(p.y, groundY, groundStepUpSpeed * dt);
+            transform.position = p;
+        }
+        else
+        {
+            p.y = groundY;
+            verticalVel = 0f;
+            fallTiltT = Mathf.MoveTowards(fallTiltT, 0f, fallTiltSpeed * 2f * dt);
+            transform.position = p;
+        }
+
+        if (visualRoot != null && !skipVisualTilt)
+        {
+            visualRoot.localRotation = visualBaseLocalRot * GetFallTiltRotation();
+        }
+
+        if (!IsRidden && !IsPetOwned && transform.position.y < wildFallDestroyY)
+            Destroy(gameObject);
+    }
+
+    bool TryFindGroundY(Vector3 pos, out float groundY)
+    {
+        groundY = pos.y;
+        const int mask = ~((1 << 2) | (1 << 6) | (1 << 7)); // bỏ Ignore Raycast, Player, Dino
+        int n = Physics.RaycastNonAlloc(pos + Vector3.up * groundRayHeight, Vector3.down, castBuf, groundRayMaxDist,
+                                        mask, QueryTriggerInteraction.Ignore);
+        bool found = false;
+        float bestY = float.NegativeInfinity;
+        for (int i = 0; i < n; i++)
+        {
+            RaycastHit h = castBuf[i];
+            Collider col = h.collider;
+            if (col == null || col == selfCol) continue;
+            if (col.GetComponentInParent<Dino>() != null) continue;
+            if (col.GetComponentInParent<PlayerController>() != null) continue;
+            if (col.GetComponentInParent<Wall>() != null) continue;
+            if (col.GetComponentInParent<Obstacle>() != null) continue;
+            if (col.GetComponentInParent<DebrisFade>() != null) continue;
+            if (col.gameObject.layer != 3 && h.normal.y < 0.6f) continue;
+
+            if (h.point.y > bestY)
+            {
+                bestY = h.point.y;
+                found = true;
+            }
+        }
+        if (found) groundY = bestY;
+        return found;
     }
 
     void OnDrawGizmosSelected()
@@ -1030,7 +1168,7 @@ public class Dino : MonoBehaviour
         float largeWeight = Data != null ? Data.largerDinoPushWeight : 2.2f;
         float maxPush = Data != null ? Data.maxSeparationPush : 2.5f;
         bool yieldToCarnivore = Data != null && Data.yieldToRiddenCarnivore;
-        float queryRadius = aiSeparationRadius + 2.5f;
+        float queryRadius = aiSeparationRadius + Mathf.Max(0f, wallHitRadius - 0.7f) + 3.5f;
         int n = Physics.OverlapSphereNonAlloc(transform.position, queryRadius, wallBuf,
                                               1 << gameObject.layer, QueryTriggerInteraction.Collide);
         float push = 0f;
@@ -1045,7 +1183,7 @@ public class Dino : MonoBehaviour
             // Nếu người chơi đang cưỡi Dino ăn thịt lớn hơn lao tới, không đẩy Dino nhỏ dạt ra để người chơi ăn thịt được dễ dàng (trừ khi bật yieldToRiddenCarnivore)
             if (!yieldToCarnivore && otherSize > mySize && d.IsRidden && d.Data != null && d.Data.diet == DinoDiet.Carnivore) continue;
 
-            float effRadius = aiSeparationRadius + Mathf.Max(0f, d.wallHitRadius - 0.7f);
+            float effRadius = aiSeparationRadius + Mathf.Max(0f, wallHitRadius - 0.7f) + Mathf.Max(0f, d.wallHitRadius - 0.7f);
             Vector3 off = transform.position - d.transform.position;
             off.y = 0f;
             float dist = off.magnitude;
@@ -1232,6 +1370,7 @@ public class Dino : MonoBehaviour
             move = transform.forward * CurrentSpeed + transform.right * steer * steerSpeed;
         }
         transform.position += move * dt;
+        UpdateGroundFollow(dt, herbivoreBucking || summonRiseTimer > 0f);
 
         if (wild)
         {

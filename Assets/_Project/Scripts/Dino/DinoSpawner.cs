@@ -23,7 +23,7 @@ public class DinoSpawner : MonoBehaviour
     public float interval = 0.8f;
     public float laneHalfWidth = 10f;
     public float spacing = 7f;
-    public int maxAlive = 35;
+    public int maxAlive = 40;
 
     [Header("Chia cấp bậc Dino theo Vùng (tùy chọn)")]
     public List<ZoneSegment> zoneSegments = new List<ZoneSegment>();
@@ -32,32 +32,32 @@ public class DinoSpawner : MonoBehaviour
     public bool useActiveWindow = true;
     public Transform player;
     public float startLineOffset = 2f;
-    public float bandLength = 20f;
-    public int maxPerBand = 5;
-    public float minDinoSpacing = 3.2f;
-    [Tooltip("Khoảng cách tối thiểu phía trước mặt để spawn (nên đặt trong vùng sương mù, vd: 60)")]
-    public float spawnAheadMin = 60f;
-    [Tooltip("Khoảng cách tối đa phía trước mặt để spawn (nên đặt gần Run Fog End, vd: 95)")]
-    public float spawnAheadMax = 95f;
+    public float bandLength = 22f;
+    public int maxPerBand = 3;
+    public float minDinoSpacing = 8.5f;
+    [Tooltip("Khoảng cách tối thiểu phía trước mặt để spawn (nên đặt trong vùng sương mù, vd: 70)")]
+    public float spawnAheadMin = 70f;
+    [Tooltip("Khoảng cách tối đa phía trước mặt để spawn (nên đặt gần Run Fog End, vd: 112)")]
+    public float spawnAheadMax = 112f;
     [Tooltip("Thu hồi con đã tụt lại sau lưng quá khoảng này (chìm vào sương mù) khi cần slot spawn phía trước")]
-    public float recycleBehindDist = 30f;
+    public float recycleBehindDist = 35f;
     [Tooltip("Khoảng cách tối thiểu phía sau để spawn khi người chơi đi ngược về sau")]
-    public float spawnBehindMin = 35f;
+    public float spawnBehindMin = 40f;
     [Tooltip("Số Dino tối thiểu trong vùng gần phía trước; thiếu sẽ spawn thêm từ sau lưng chạy vượt lên.")]
     public int minNearAheadDinos = 4;
-    public float despawnBehind = 70f;
-    public float despawnAhead = 135f;
+    public float despawnBehind = 130f;
+    public float despawnAhead = 155f;
 
     [Header("Sương mù & Tầm nhìn (Fog)")]
     [Tooltip("Chỉ bật khi sàn map đã chia lưới nhỏ hoặc dùng shader per-pixel fog; sàn 1 khối dài trong Built-in sẽ bị trắng xóa khi vertex vượt quá fogEnd.")]
     public bool controlFog = false;
     public Color defaultFogColor = new Color(0.72f, 0.86f, 0.96f, 1f);
-    public float runFogStart = 48f;
-    public float runFogEnd = 95f;
-    public float runFarClip = 140f;
-    public float penFogStart = 75f;
-    public float penFogEnd = 150f;
-    public float penFarClip = 200f;
+    public float runFogStart = 56f;
+    public float runFogEnd = 112f;
+    public float runFarClip = 165f;
+    public float penFogStart = 88f;
+    public float penFogEnd = 175f;
+    public float penFarClip = 235f;
     public float fogBlendSpeed = 4f;
 
     float timer;
@@ -326,12 +326,12 @@ public class DinoSpawner : MonoBehaviour
 
     bool IsClearOfDinos(Vector3 candidate)
     {
-        float minSqr = minDinoSpacing * minDinoSpacing;
         for (int i = 0; i < Dino.All.Count; i++)
         {
             Dino d = Dino.All[i];
             if (d == null) continue;
-            if ((d.transform.position - candidate).sqrMagnitude < minSqr) return false;
+            float reqDist = minDinoSpacing + Mathf.Max(0f, d.wallHitRadius - 0.7f) * 1.5f;
+            if ((d.transform.position - candidate).sqrMagnitude < reqDist * reqDist) return false;
         }
         return true;
     }
@@ -391,10 +391,11 @@ public class DinoSpawner : MonoBehaviour
 
             Vector3 pos = Vector3.zero;
             bool clear = false;
-            for (int attempt = 0; attempt < 6; attempt++)
+            for (int attempt = 0; attempt < 8; attempt++)
             {
-                float x = Mathf.Clamp(baseX + Random.Range(-4.5f, 4.5f), -laneHalfWidth, laneHalfWidth);
-                Vector3 candidate = herdOrigin + transform.right * x + transform.forward * (i * spacing);
+                float x = Mathf.Clamp(baseX + Random.Range(-7.5f, 7.5f), -laneHalfWidth, laneHalfWidth);
+                float zJitter = Random.Range(-3.5f, 3.5f);
+                Vector3 candidate = herdOrigin + transform.right * x + transform.forward * (i * spacing + zJitter);
                 if (Physics.Raycast(candidate + Vector3.up * 6f, Vector3.down, out RaycastHit gHit, 16f, 1 << 3, QueryTriggerInteraction.Ignore))
                     candidate.y = gHit.point.y;
                 if (zone != null && !zone.ContainsPoint(candidate, 0f)) continue;
@@ -419,5 +420,44 @@ public class DinoSpawner : MonoBehaviour
             if (useActiveWindow)
                 d.SetWindow(player, transform.position, transform.forward, despawnBehind, despawnAhead);
         }
+    }
+
+    [ContextMenu("Apply Extended Fog & Spawn Range")]
+    void ApplyExtendedFogAndSpawnRange()
+    {
+        maxAlive = 40;
+        spawnAheadMin = 70f;
+        spawnAheadMax = 112f;
+        recycleBehindDist = 35f;
+        spawnBehindMin = 40f;
+        despawnBehind = 130f;
+        despawnAhead = 155f;
+        runFogStart = 56f;
+        runFogEnd = 112f;
+        runFarClip = 165f;
+        penFogStart = 88f;
+        penFogEnd = 175f;
+        penFarClip = 235f;
+
+#if UNITY_EDITOR
+        UnityEditor.Undo.RecordObject(this, "Apply Extended Fog & Spawn Range");
+        UnityEditor.EditorUtility.SetDirty(this);
+        BiomeSection[] sections = FindObjectsOfType<BiomeSection>(true);
+        for (int i = 0; i < sections.Length; i++)
+        {
+            if (sections[i] == null) continue;
+            UnityEditor.Undo.RecordObject(sections[i], "Update BiomeSection Fog");
+            sections[i].fallbackFogStart = runFogStart;
+            sections[i].fallbackFogEnd = runFogEnd;
+            UnityEditor.EditorUtility.SetDirty(sections[i]);
+            if (sections[i].data != null)
+            {
+                UnityEditor.Undo.RecordObject(sections[i].data, "Update BiomeData Fog");
+                sections[i].data.fogStart = runFogStart;
+                sections[i].data.fogEnd = runFogEnd;
+                UnityEditor.EditorUtility.SetDirty(sections[i].data);
+            }
+        }
+#endif
     }
 }

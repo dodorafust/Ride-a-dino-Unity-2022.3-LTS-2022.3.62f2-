@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Scorpion
   m_EditorClassIdentifier: 
   displayName: Scorpion
-  rarity: 4
+  rarity: 3
   size: 4
   diet: 1
-  zone: 2
+  zone: 3
   icon: {fileID: 0}
   modelPrefab: {fileID: 6618974744010031045, guid: 06f30b792c087644c9e72b52149effd3, type: 3}
   animatorController: {fileID: 22100000, guid: c067f095cdbba154594fb9b7a12b1e35, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 1
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 55
-  requiredStamina: 600
-  tameTime: 6
-  runSpeed: 30
-  riddenSpeedMultiplier: 1
+  baseMoney: 5800
+  requiredStamina: 3800
+  tameTime: 6.2
+  runSpeed: 27
+  riddenSpeedMultiplier: 1.02
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 290000
+  indexRewardStamina: 650
+  indexAllSizesRewardCash: 580000
+  indexAllVariantsRewardCash: 2320000

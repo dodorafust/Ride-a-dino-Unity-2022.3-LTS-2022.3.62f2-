@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ankylosaurus
   m_EditorClassIdentifier: 
   displayName: Ankylosaurus
-  rarity: 2
+  rarity: 1
   size: 3
   diet: 0
   zone: 2
@@ -26,8 +26,8 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.35
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 3
-  requiredStamina: 250
+  baseMoney: 100
+  requiredStamina: 160
   tameTime: 5
   runSpeed: 20
   riddenSpeedMultiplier: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 5000
+  indexRewardStamina: 75
+  indexAllSizesRewardCash: 10000
+  indexAllVariantsRewardCash: 40000

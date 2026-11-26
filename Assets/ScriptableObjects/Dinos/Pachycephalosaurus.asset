@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Pachycephalosaurus
   m_EditorClassIdentifier: 
   displayName: Pachycephalosaurus
-  rarity: 2
+  rarity: 0
   size: 2
   diet: 0
-  zone: 2
+  zone: 1
   icon: {fileID: 0}
   modelPrefab: {fileID: 3035651538186958168, guid: 220573db5a10b434bb2ca3cfe70da62d, type: 3}
   animatorController: {fileID: 22100000, guid: 1ce95451acca12b44b9f1ed0b09c5507, type: 2}
@@ -26,10 +26,10 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.45
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 6
-  requiredStamina: 40
-  tameTime: 5
-  runSpeed: 28
+  baseMoney: 3
+  requiredStamina: 12
+  tameTime: 4
+  runSpeed: 19
   riddenSpeedMultiplier: 1
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 150
+  indexRewardStamina: 15
+  indexAllSizesRewardCash: 300
+  indexAllVariantsRewardCash: 1200

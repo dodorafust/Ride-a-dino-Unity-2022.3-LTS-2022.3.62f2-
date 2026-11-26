@@ -144,9 +144,17 @@ MonoBehaviour:
   bodyCenter: {x: 0, y: 1, z: 0}
   wallHitRadius: 0.7
   wallCrashDelay: 2
+  groundGravity: -28
+  groundStepUpSpeed: 16
+  groundRayHeight: 2.5
+  groundRayMaxDist: 20
+  fallPitchAngle: 52
+  fallRollAngle: 22
+  fallTiltSpeed: 3.5
+  wildFallDestroyY: -40
   seat: {fileID: 4964642189547423015}
   autoLabelAboveHead: 1
-  labelHeadPadding: 0.8
+  labelHeadPadding: 1.8
   labelOffset: {x: 0, y: 3.8, z: 0}
   highlightColor: {r: 1, g: 1, b: 0, a: 1}
   highlightBrightness: 0.5
@@ -177,6 +185,9 @@ MonoBehaviour:
   carnivoreSwallowEndScale: 0.08
   carnivoreVictimSpinSpeed: 240
   carnivoreSpawnDebris: 0
+  trampleShakeMultiplier: 1.5
+  minTrampleShakeIntensity: 0.48
+  minTrampleShakeDuration: 0.24
   aiLookAhead: 10
   aiProbeRadius: 1.1
   aiMaxOffset: 45

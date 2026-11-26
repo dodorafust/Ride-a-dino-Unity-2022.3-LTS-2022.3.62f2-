@@ -12,8 +12,8 @@ public class BiomeData : ScriptableObject
     [Header("Sương mù & Ánh sáng")]
     public bool overrideFog = true;
     public Color fogColor = new Color(0.72f, 0.86f, 0.96f, 1f);
-    public float fogStart = 48f;
-    public float fogEnd = 95f;
+    public float fogStart = 56f;
+    public float fogEnd = 112f;
     public bool overrideLight = false;
     public Color lightColor = Color.white;
     public float lightIntensity = 1f;

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Baryonyx
   m_EditorClassIdentifier: 
   displayName: Baryonyx
-  rarity: 3
+  rarity: 4
   size: 3
   diet: 1
   zone: 3
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.55
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 20
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 28
-  riddenSpeedMultiplier: 1
+  baseMoney: 12500
+  requiredStamina: 7500
+  tameTime: 6.8
+  runSpeed: 29
+  riddenSpeedMultiplier: 1.05
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 625000
+  indexRewardStamina: 775
+  indexAllSizesRewardCash: 1250000
+  indexAllVariantsRewardCash: 5000000

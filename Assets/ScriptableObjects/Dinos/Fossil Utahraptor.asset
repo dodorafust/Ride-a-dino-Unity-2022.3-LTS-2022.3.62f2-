@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Fossil Utahraptor
   m_EditorClassIdentifier: 
   displayName: Fossil Utahraptor
-  rarity: 5
+  rarity: 6
   size: 5
   diet: 1
-  zone: 1
+  zone: 9
   icon: {fileID: 0}
   modelPrefab: {fileID: 6665310077463828725, guid: 6434281bed92f5347ba514effa6d83a9, type: 3}
   animatorController: {fileID: 22100000, guid: fc658978b3f5b0544ad29aceaf964720, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.45
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 2
-  requiredStamina: 10
-  tameTime: 4.5
-  runSpeed: 26
-  riddenSpeedMultiplier: 1
+  baseMoney: 150000000
+  requiredStamina: 210000000
+  tameTime: 9.2
+  runSpeed: 42
+  riddenSpeedMultiplier: 1.14
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 7500000000
+  indexRewardStamina: 20000000
+  indexAllSizesRewardCash: 15000000000
+  indexAllVariantsRewardCash: 60000000000

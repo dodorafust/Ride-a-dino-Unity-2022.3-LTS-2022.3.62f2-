@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Yutyrannus
   m_EditorClassIdentifier: 
   displayName: Yutyrannus
-  rarity: 4
+  rarity: 5
   size: 5
   diet: 1
-  zone: 4
+  zone: 5
   icon: {fileID: 0}
   modelPrefab: {fileID: 5778228917561922189, guid: f89b830f269aea44eb17a46d1fe0cf6c, type: 3}
   animatorController: {fileID: 22100000, guid: 7e4df7ab70f993f4ebd1d1b4475700a3, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.35
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 80
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 30
-  riddenSpeedMultiplier: 1
+  baseMoney: 750000
+  requiredStamina: 310000
+  tameTime: 7.8
+  runSpeed: 32
+  riddenSpeedMultiplier: 1.08
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 37500000
+  indexRewardStamina: 27000
+  indexAllSizesRewardCash: 75000000
+  indexAllVariantsRewardCash: 300000000

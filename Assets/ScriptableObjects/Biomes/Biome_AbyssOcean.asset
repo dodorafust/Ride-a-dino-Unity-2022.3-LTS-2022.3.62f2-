@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1a2b3c4d5e647899011223344550001, type: 3}
+  m_Name: Biome_AbyssOcean
+  m_EditorClassIdentifier: 
+  biomeName: Abyss Ocean
+  icon: {fileID: 0}
+  cardColor: {r: 0.1, g: 0.34, b: 0.66, a: 1}
+  borderColor: {r: 0.22, g: 0.72, b: 0.98, a: 1}
+  spawnTable: {fileID: 11400000, guid: b856262fc59f2834283af7d3fdee80f1, type: 2}
+  overrideFog: 1
+  fogColor: {r: 0.18, g: 0.42, b: 0.68, a: 1}
+  fogStart: 56
+  fogEnd: 112
+  overrideLight: 0
+  lightColor: {r: 1, g: 1, b: 1, a: 1}
+  lightIntensity: 1
+  indexCompleteCash: 7500000000
+  indexCompleteStamina: 5000000
+  saddleRewardIcon: {fileID: 0}

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum Rarity { Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret, Divine }
+public enum Rarity { Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret, Eternal, Divine }
 public enum DinoTrait { None, Night, Meteor, Bloodmoon, Storm, Rainbow }
 public enum ObjectSize { Small = 0, Medium = 1, Large = 2, Giant = 3 }
 public enum DinoSpeciesSize
@@ -140,17 +140,16 @@ public static class DinoSizeModifiers
     }
 }
 
-// Money/s = base x Rarity x Trait x Variant (task "Data Dinos").
-// Multiplier của Rarity/Trait là số tạm. Multiplier của Variant nằm trong asset DinoVariant.
+// Money/s = baseMoney x Trait x Variant x Size (RarityMul = 1 để Base Money chính là $/s thực tế của size Normal).
 public static class DinoMultipliers
 {
-    static readonly float[] RarityMul       = { 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
+    static readonly float[] RarityMul       = { 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
     static readonly float[] TraitMul        = { 1f, 2f, 2f, 3f, 2f, 5f };
     static readonly float[] TraitStaminaMul = { 1f, 1.5f, 1.5f, 2f, 1.5f, 3f };
 
-    public static float Of(Rarity r) { return RarityMul[(int)r]; }
-    public static float Of(DinoTrait t) { return TraitMul[(int)t]; }
-    public static float StaminaOf(DinoTrait t) { return TraitStaminaMul[(int)t]; }
+    public static float Of(Rarity r) { return RarityMul[Mathf.Clamp((int)r, 0, RarityMul.Length - 1)]; }
+    public static float Of(DinoTrait t) { return TraitMul[Mathf.Clamp((int)t, 0, TraitMul.Length - 1)]; }
+    public static float StaminaOf(DinoTrait t) { return TraitStaminaMul[Mathf.Clamp((int)t, 0, TraitStaminaMul.Length - 1)]; }
 }
 
 public static class DinoColors
@@ -166,6 +165,8 @@ public static class DinoColors
             case Rarity.Legendary: return new Color(1f, 0.65f, 0.1f);
             case Rarity.Mythic:    return new Color(1f, 0.25f, 0.25f);
             case Rarity.Secret:    return new Color(0.1f, 0.9f, 0.9f);
+            case Rarity.Eternal:   return new Color(0.95f, 0.35f, 0.95f);
+            case Rarity.Divine:    return new Color(1f, 0.95f, 0.55f);
             default:               return new Color(1f, 1f, 0.6f);
         }
     }

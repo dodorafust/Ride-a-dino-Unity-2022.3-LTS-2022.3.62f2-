@@ -14,49 +14,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   entries:
   - dino: {fileID: 11400000, guid: 88a541bce9ca75e45b38a8103f6c55f4, type: 2}
-    weight: 40
-    herdMin: 1
-    herdMax: 3
-    speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 4ccb0a9020090d74b8dc08dda8b7c810, type: 2}
-    weight: 25
-    herdMin: 1
-    herdMax: 3
+    weight: 30
+    herdMin: 2
+    herdMax: 4
     speedJitter: 0.5
   - dino: {fileID: 11400000, guid: ab5ce87f9eaf438498031d9f7ce09e7f, type: 2}
-    weight: 10
-    herdMin: 1
-    herdMax: 3
+    weight: 24
+    herdMin: 2
+    herdMax: 4
     speedJitter: 0.5
   - dino: {fileID: 11400000, guid: 6cc03eafcc3c71748a1873fad8bd243e, type: 2}
-    weight: 15
+    weight: 18
     herdMin: 1
-    herdMax: 3
+    herdMax: 2
     speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 2f9389e06b418a84dac84dc24a0ff10e, type: 2}
-    weight: 10
+  - dino: {fileID: 11400000, guid: 47f6011e63988624a80b119c4508be13, type: 2}
+    weight: 13
     herdMin: 1
-    herdMax: 3
+    herdMax: 2
     speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 81a6b361adbe0c44f8f3fc20c0d959fa, type: 2}
-    weight: 10
+  - dino: {fileID: 11400000, guid: 4ccb0a9020090d74b8dc08dda8b7c810, type: 2}
+    weight: 9
     herdMin: 1
-    herdMax: 1
+    herdMax: 2
     speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 19f670335c6076740889173e01340d08, type: 2}
-    weight: 10
+  - dino: {fileID: 11400000, guid: 02a0dabe494856841be9ef26560963c7, type: 2}
+    weight: 6
     herdMin: 1
-    herdMax: 1
-    speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 30b6bf0559e680049add4304d3807393, type: 2}
-    weight: 10
-    herdMin: 1
-    herdMax: 1
-    speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 26fa91807efa8904e83c0858d7475343, type: 2}
-    weight: 10
-    herdMin: 1
-    herdMax: 1
+    herdMax: 2
     speedJitter: 0.5
   variants:
   - variant: {fileID: 11400000, guid: 6e5fcec86af0aad4b8264b822fc169ff, type: 2}

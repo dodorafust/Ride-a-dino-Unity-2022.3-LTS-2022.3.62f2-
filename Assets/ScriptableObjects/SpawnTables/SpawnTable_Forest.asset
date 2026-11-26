@@ -14,37 +14,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   entries:
   - dino: {fileID: 11400000, guid: ca2cf2141c3795443b543b8e545b7b3b, type: 2}
-    weight: 20
+    weight: 30
+    herdMin: 2
+    herdMax: 4
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: e7086eb5dfadbf04fa3c45fbbacf9e7c, type: 2}
+    weight: 24
+    herdMin: 2
+    herdMax: 4
+    speedJitter: 0.5
+  - dino: {fileID: 11400000, guid: d850b3cb3b42d2e4c9953f3f19e0a9b3, type: 2}
+    weight: 18
     herdMin: 1
     herdMax: 2
     speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: ab5ce87f9eaf438498031d9f7ce09e7f, type: 2}
-    weight: 10
+  - dino: {fileID: 11400000, guid: 8ef30d8852be278409070d32ce30c26b, type: 2}
+    weight: 13
     herdMin: 1
-    herdMax: 3
+    herdMax: 2
     speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: d850b3cb3b42d2e4c9953f3f19e0a9b3, type: 2}
-    weight: 8
+  - dino: {fileID: 11400000, guid: 8e744d0193a2196429b105cbbf62379b, type: 2}
+    weight: 9
     herdMin: 1
     herdMax: 2
     speedJitter: 0.5
   - dino: {fileID: 11400000, guid: 4f37b17f5a8e134489a86d101d2b475b, type: 2}
-    weight: 7
-    herdMin: 1
-    herdMax: 2
-    speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 41415b7375b752c4a997b44f43fc78c5, type: 2}
-    weight: 1
-    herdMin: 1
-    herdMax: 1
-    speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 6ccb41282d5b1684bad3e0aa1e934c70, type: 2}
-    weight: 1
-    herdMin: 1
-    herdMax: 1
-    speedJitter: 0.5
-  - dino: {fileID: 11400000, guid: 2f9389e06b418a84dac84dc24a0ff10e, type: 2}
-    weight: 25
+    weight: 6
     herdMin: 1
     herdMax: 2
     speedJitter: 0.5

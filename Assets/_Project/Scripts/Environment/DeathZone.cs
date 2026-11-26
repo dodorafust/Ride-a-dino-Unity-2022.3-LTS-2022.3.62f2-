@@ -9,6 +9,19 @@ public class DeathZone : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         PlayerController p = other.GetComponentInParent<PlayerController>();
-        if (p != null) p.Kill(DeathReason.Fell);
+        if (p != null)
+        {
+            p.Kill(DeathReason.Fell);
+            return;
+        }
+
+        Dino d = other.GetComponentInParent<Dino>();
+        if (d != null)
+        {
+            if (d.IsRidden && PlayerController.Instance != null)
+                PlayerController.Instance.Kill(DeathReason.Fell);
+            else if (!d.IsRidden && !d.IsPetOwned)
+                Destroy(d.gameObject);
+        }
     }
 }

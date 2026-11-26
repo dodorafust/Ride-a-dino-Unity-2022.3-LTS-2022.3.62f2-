@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Therizinosaurus
   m_EditorClassIdentifier: 
   displayName: Therizinosaurus
-  rarity: 3
+  rarity: 5
   size: 4
   diet: 0
-  zone: 2
+  zone: 4
   icon: {fileID: 0}
   modelPrefab: {fileID: 5544205578790690596, guid: 4ba5fdcb170a61f44ad19701462db611, type: 3}
   animatorController: {fileID: 22100000, guid: 27ec7ed46514671438a64dea636b24c0, type: 2}
@@ -26,12 +26,12 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.52
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 55
-  requiredStamina: 600
-  tameTime: 6
-  runSpeed: 22
-  riddenSpeedMultiplier: 1
-  killOnStaminaEmptyIfUntamed: 0
+  baseMoney: 145000
+  requiredStamina: 65000
+  tameTime: 7.5
+  runSpeed: 28
+  riddenSpeedMultiplier: 1.05
+  killOnStaminaEmptyIfUntamed: 1
   killCutsceneStyle: 0
   allowKillPounceBite: 0
   allowKillTossSwallow: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 7250000
+  indexRewardStamina: 5250
+  indexAllSizesRewardCash: 14500000
+  indexAllVariantsRewardCash: 58000000

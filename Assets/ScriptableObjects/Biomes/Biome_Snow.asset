@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1a2b3c4d5e647899011223344550001, type: 3}
+  m_Name: Biome_Snow
+  m_EditorClassIdentifier: 
+  biomeName: Snow
+  icon: {fileID: 0}
+  cardColor: {r: 0.46, g: 0.78, b: 0.96, a: 1}
+  borderColor: {r: 0.75, g: 0.94, b: 1, a: 1}
+  spawnTable: {fileID: 11400000, guid: aa69154466a0bc445a2942e8e7d12012, type: 2}
+  overrideFog: 1
+  fogColor: {r: 0.82, g: 0.92, b: 0.98, a: 1}
+  fogStart: 56
+  fogEnd: 112
+  overrideLight: 0
+  lightColor: {r: 1, g: 1, b: 1, a: 1}
+  lightIntensity: 1
+  indexCompleteCash: 190000000
+  indexCompleteStamina: 110000
+  saddleRewardIcon: {fileID: 0}

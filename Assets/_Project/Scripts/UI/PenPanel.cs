@@ -46,6 +46,16 @@ public class PenPanel : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        Image panelBg = GetComponent<Image>();
+        if (panelBg != null)
+        {
+            panelBg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 18);
+            panelBg.type = Image.Type.Sliced;
+        }
+        ApplyRoundedButton(equipBestButton, 10);
+        ApplyRoundedButton(collectButton, 10);
+        ApplyRoundedButton(closeButton, 10);
+
         if (equipBestButton != null)
         {
             equipBestButton.onClick.AddListener(delegate { if (pen != null) pen.EquipBest(); });
@@ -60,6 +70,17 @@ public class PenPanel : MonoBehaviour
         {
             closeButton.onClick.AddListener(Hide);
             UIEffectUtil.AttachButtonBounce(this, closeButton);
+        }
+    }
+
+    static void ApplyRoundedButton(Button btn, int radius)
+    {
+        if (btn == null) return;
+        Image img = btn.GetComponent<Image>();
+        if (img != null)
+        {
+            img.sprite = UIEffectUtil.GetRoundedRectSprite(64, radius);
+            img.type = Image.Type.Sliced;
         }
     }
 

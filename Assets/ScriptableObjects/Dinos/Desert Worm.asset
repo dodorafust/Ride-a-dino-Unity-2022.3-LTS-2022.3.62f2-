@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Desert Worm
   m_EditorClassIdentifier: 
   displayName: Desert Worm
-  rarity: 4
+  rarity: 3
   size: 5
   diet: 1
-  zone: 4
+  zone: 3
   icon: {fileID: 0}
   modelPrefab: {fileID: 4433992682109194018, guid: 561f87c060698864792615482dd66af8, type: 3}
   animatorController: {fileID: 22100000, guid: bd1a7339b1d31ed4eb55c25bdd11cfb3, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 1
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 80
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 27
-  riddenSpeedMultiplier: 1
+  baseMoney: 8500
+  requiredStamina: 5400
+  tameTime: 6.5
+  runSpeed: 28
+  riddenSpeedMultiplier: 1.05
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 425000
+  indexRewardStamina: 725
+  indexAllSizesRewardCash: 850000
+  indexAllVariantsRewardCash: 3400000

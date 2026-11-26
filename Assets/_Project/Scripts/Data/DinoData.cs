@@ -24,7 +24,7 @@ public class DinoData : ScriptableObject
     public Vector3 holdRotationOffset = Vector3.zero;
 
     [Header("Economy")]
-    public float baseMoney = 1f;               // Money/s cơ bản
+    public double baseMoney = 1;               // Money/s cơ bản (Normal size, Normal variant)
 
     [Header("Ride / Tame")]
     public float requiredStamina = 10f;        // Stamina cần để tame chắc chắn
@@ -134,7 +134,7 @@ public class DinoData : ScriptableObject
         get
         {
             if (indexAllVariantsRewardCash > 0) return indexAllVariantsRewardCash;
-            return EffectiveIndexRewardCash * 4.0;
+            return EffectiveIndexRewardCash * 8.0;
         }
     }
 }

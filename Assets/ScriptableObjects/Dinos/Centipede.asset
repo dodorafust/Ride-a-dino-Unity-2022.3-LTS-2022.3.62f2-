@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Centipede
   m_EditorClassIdentifier: 
   displayName: Centipede
-  rarity: 4
+  rarity: 3
   size: 4
-  diet: 0
-  zone: 2
+  diet: 1
+  zone: 3
   icon: {fileID: 0}
   modelPrefab: {fileID: 1900452864641904372, guid: 298571e95545b7744899ca86bffcb77f, type: 3}
   animatorController: {fileID: 22100000, guid: 98e7d75a8239add458119173eb5a084a, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.52
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 55
-  requiredStamina: 600
+  baseMoney: 3500
+  requiredStamina: 2600
   tameTime: 6
-  runSpeed: 28
-  riddenSpeedMultiplier: 1
+  runSpeed: 27
+  riddenSpeedMultiplier: 1.02
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 175000
+  indexRewardStamina: 550
+  indexAllSizesRewardCash: 350000
+  indexAllVariantsRewardCash: 1400000

@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Ceratosaurus
   m_EditorClassIdentifier: 
   displayName: Ceratosaurus
-  rarity: 3
+  rarity: 4
   size: 4
   diet: 1
-  zone: 3
+  zone: 4
   icon: {fileID: 0}
   modelPrefab: {fileID: 2086719292497908575, guid: ed88a559d3b1e2f429b2d7d42f7e7639, type: 3}
   animatorController: {fileID: 22100000, guid: e5b46360b95f9204197daddf8431bca5, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.55
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 20
-  requiredStamina: 800
-  tameTime: 8
+  baseMoney: 70000
+  requiredStamina: 32000
+  tameTime: 7
   runSpeed: 30
-  riddenSpeedMultiplier: 1
+  riddenSpeedMultiplier: 1.05
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 3500000
+  indexRewardStamina: 2750
+  indexAllSizesRewardCash: 7000000
+  indexAllVariantsRewardCash: 28000000

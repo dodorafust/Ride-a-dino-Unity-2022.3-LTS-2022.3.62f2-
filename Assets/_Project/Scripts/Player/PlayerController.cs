@@ -951,21 +951,19 @@ public class PlayerController : MonoBehaviour
 
     Dino FindNearest(bool frontOnly)
     {
-        Vector3 fwd = CamForwardFlat();
-        int n = Physics.OverlapSphereNonAlloc(transform.position, scanRadius, hitBuf,
-                                              dinoMask, QueryTriggerInteraction.Collide);
         Dino best = null;
         float bestDist = float.MaxValue;
 
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < Dino.All.Count; i++)
         {
-            Dino d = hitBuf[i].GetComponentInParent<Dino>();
-            if (!IsSelectable(d)) continue;
+            Dino d = Dino.All[i];
+            if (!IsSelectable(d) || d.seat == null) continue;
 
-            Vector3 to = d.seat.position - transform.position;
             if (frontOnly && !IsInFanSector(d.seat.position, scanRadius)) continue;
 
-            float dist = to.magnitude;
+            float dist = Vector3.ProjectOnPlane(d.seat.position - transform.position, Vector3.up).magnitude;
+            if (!frontOnly && dist > scanRadius) continue;
+
             if (dist < bestDist) { bestDist = dist; best = d; }
         }
         return best;
@@ -1013,14 +1011,14 @@ public class PlayerController : MonoBehaviour
 
     Dino FindBestByCameraAim()
     {
-        int n = Physics.OverlapSphereNonAlloc(transform.position, scanRadius, hitBuf,
-                                              dinoMask, QueryTriggerInteraction.Collide);
         Dino best = null;
         float bestScore = float.MaxValue;
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < Dino.All.Count; i++)
         {
-            Dino d = hitBuf[i].GetComponentInParent<Dino>();
-            if (!IsSelectable(d)) continue;
+            Dino d = Dino.All[i];
+            if (!IsSelectable(d) || d.seat == null) continue;
+            if (Vector3.ProjectOnPlane(d.seat.position - transform.position, Vector3.up).sqrMagnitude > scanRadius * scanRadius)
+                continue;
             float s = AimScore(d);
             if (s < bestScore) { bestScore = s; best = d; }
         }
@@ -1481,6 +1479,8 @@ public class PlayerController : MonoBehaviour
 
         Dino diedOnDino = currentDino;
         if (currentDino != null) ReleaseDino();
+        if (reason == DeathReason.Fell && diedOnDino != null)
+            Destroy(diedOnDino.gameObject);
         ride.End();
         SetTarget(null);
         if (preview != null)
@@ -1691,6 +1691,7 @@ public class PlayerController : MonoBehaviour
         transform.SetParent(m.seat);
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
+        m.TriggerLandingBounce();
         if (animator != null)
         {
             animator.transform.localRotation = Quaternion.identity;
@@ -1719,6 +1720,7 @@ public class PlayerController : MonoBehaviour
         Vector3 exit = machine != null ? machine.ExitPosition : transform.position + Vector3.up;
         transform.SetParent(null);
         transform.SetPositionAndRotation(exit, Quaternion.identity);
+        transform.localScale = Vector3.one;
         SetBodyActive(true);
         velocity = Vector3.zero;
         if (machine != null) machine.SetOccupied(false);

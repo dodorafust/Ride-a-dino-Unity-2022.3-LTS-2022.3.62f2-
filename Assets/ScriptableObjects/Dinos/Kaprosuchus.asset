@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a65dab511e384d988eda30e8a114b, type: 3}
+  m_Name: Kaprosuchus
+  m_EditorClassIdentifier: 
+  displayName: Kaprosuchus
+  rarity: 5
+  size: 3
+  diet: 1
+  zone: 7
+  icon: {fileID: 0}
+  modelPrefab: {fileID: 7225820530083437426, guid: e042a2e31eda1fc4196f12d1ecc43ea3, type: 3}
+  animatorController: {fileID: 22100000, guid: 4bbe424d883d97b419e8aaed629965a9, type: 2}
+  modelScale: 1.5
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.2, z: 0}
+  seatSizeScaleWeight: 0.5
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
+  baseMoney: 11000000
+  requiredStamina: 7200000
+  tameTime: 8.2
+  runSpeed: 33
+  riddenSpeedMultiplier: 1.08
+  killOnStaminaEmptyIfUntamed: 0
+  killCutsceneStyle: 0
+  allowKillPounceBite: 1
+  allowKillTossSwallow: 1
+  allowKillStomp: 1
+  killCameraStyle: 0
+  maxAliveOnTrack: 5
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 4.5}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0
+  indexRewardCash: 550000000
+  indexRewardStamina: 650000
+  indexAllSizesRewardCash: 1100000000
+  indexAllVariantsRewardCash: 4400000000

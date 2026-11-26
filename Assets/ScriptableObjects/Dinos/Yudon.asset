@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Yudon
   m_EditorClassIdentifier: 
   displayName: Yudon
-  rarity: 4
+  rarity: 6
   size: 6
   diet: 1
-  zone: 4
+  zone: 5
   icon: {fileID: 0}
   modelPrefab: {fileID: 3898397915708174781, guid: 64a18eb2235255341b24c735f775b5c5, type: 3}
   animatorController: {fileID: 22100000, guid: 31ea554ef0c38874dbe97ac4f8e5df7c, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.35
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 80
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 32
-  riddenSpeedMultiplier: 1
+  baseMoney: 1500000
+  requiredStamina: 640000
+  tameTime: 8.2
+  runSpeed: 34
+  riddenSpeedMultiplier: 1.1
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 75000000
+  indexRewardStamina: 57500
+  indexAllSizesRewardCash: 150000000
+  indexAllVariantsRewardCash: 600000000

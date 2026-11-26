@@ -19,7 +19,7 @@ public class PlayerAuraController : MonoBehaviour
     [Tooltip("Bật: Chỉ hiện VFX Aura khi người chơi đứng yên; ngay khi di chuyển / nhảy / cưỡi Dino sẽ tự động tắt. Tắt: Luôn hiện VFX Aura.")]
     public bool onlyShowWhenStationary = true;
     [Tooltip("Thời gian đứng yên tối thiểu (giây) trước khi VFX Aura bật sáng trở lại.")]
-    [Min(0f)] public float stationaryShowDelay = 0.12f;
+    [Min(0f)] public float stationaryShowDelay = 0.05f;
     [Tooltip("Ngưỡng vận tốc di chuyển (m/s) để coi là đang di chuyển và tắt Aura.")]
     [Min(0.02f)] public float moveSpeedThreshold = 0.22f;
     [Tooltip("Bật: Khi bắt đầu di chuyển sẽ ngừng phun hạt mới (StopEmitting) để hào quang tan dần mượt mà thay vì biến mất đột ngột.")]
@@ -179,7 +179,7 @@ public class PlayerAuraController : MonoBehaviour
                                 || player.State == PlayerState.Catching
                                 || mountedPet;
                 bool sittingForbidden = player.State == PlayerState.Sitting && !showWhileSittingOnMachine;
-                bool hasInputMove = GameInput.Move.sqrMagnitude > 0.01f;
+                bool hasInputMove = GameInput.Move.sqrMagnitude > 0.01f || Input.GetButton("Jump");
                 bool isMoving = ridingOrAir || sittingForbidden || hasInputMove || horizSpeed > moveSpeedThreshold;
 
                 if (isMoving)
@@ -214,7 +214,7 @@ public class PlayerAuraController : MonoBehaviour
                 if (ps == null) continue;
                 if (active)
                 {
-                    if (!ps.isPlaying) ps.Play(true);
+                    if (!ps.isEmitting) ps.Play(true);
                 }
                 else
                 {

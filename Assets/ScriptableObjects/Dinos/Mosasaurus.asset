@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Mosasaurus
   m_EditorClassIdentifier: 
   displayName: Mosasaurus
-  rarity: 5
+  rarity: 6
   size: 6
   diet: 1
-  zone: 4
+  zone: 7
   icon: {fileID: 0}
   modelPrefab: {fileID: 2598050648654001237, guid: 34d47948a2d7b3145b1a2690c6bdf15a, type: 3}
   animatorController: {fileID: 22100000, guid: 5c9e1b3e7648c834fa71efa14332d700, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.35
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 80
-  requiredStamina: 800
-  tameTime: 8
-  runSpeed: 25
-  riddenSpeedMultiplier: 1
+  baseMoney: 23000000
+  requiredStamina: 27000000
+  tameTime: 9
+  runSpeed: 36
+  riddenSpeedMultiplier: 1.12
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 1150000000
+  indexRewardStamina: 2500000
+  indexAllSizesRewardCash: 2300000000
+  indexAllVariantsRewardCash: 9200000000

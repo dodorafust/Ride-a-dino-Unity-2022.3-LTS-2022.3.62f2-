@@ -17,8 +17,8 @@ public class DinoIndexPopup : MonoBehaviour
 
     [Header("Hiệu ứng & Nền khóa cảm ứng")]
     public bool hideOnStart = true;
-    public bool closeOnBackdropClick = true;
-    public Color modalDimColor = new Color(0f, 0f, 0f, 0.62f);
+    public bool closeOnBackdropClick = false;
+    public Color modalDimColor = new Color(0f, 0f, 0f, 0.8352941f);
     public float openBounceDuration = 0.28f;
 
     [Header("Nội dung chữ")]
@@ -43,6 +43,8 @@ public class DinoIndexPopup : MonoBehaviour
     readonly Dictionary<DinoData, DinoSpawnTable> speciesTableMap = new Dictionary<DinoData, DinoSpawnTable>();
 
     DinoData selectedDino;
+    int selectedVariantIndex = 0;
+    float variantsScrollPos = 1f;
     bool showingVariants;
     bool initialized;
     bool dataLoaded;
@@ -60,6 +62,9 @@ public class DinoIndexPopup : MonoBehaviour
     public RectTransform biomeScrollContent;
     public GameObject variantsPanelGo;
     public RectTransform variantsContent;
+    GameObject leftAreaGo;
+    GameObject rightAreaGo;
+    readonly Dictionary<DinoData, (Image border, RectTransform inner)> cardVisuals = new Dictionary<DinoData, (Image, RectTransform)>();
     public Image totalProgressFill;
     public TMP_Text totalProgressText;
 
@@ -117,13 +122,48 @@ public class DinoIndexPopup : MonoBehaviour
     [ContextMenu("Dựng sẵn UI ra Scene để chỉnh sửa")]
     public void BuildInEditor()
     {
+        Vector3 savedScale = panelRoot != null ? panelRoot.localScale : Vector3.one;
+        Vector2 savedSize = panelRoot != null ? panelRoot.sizeDelta : new Vector2(1140f, 650f);
+
+        if (panelRoot != null)
+        {
+            if (Application.isPlaying) Destroy(panelRoot.gameObject);
+            else DestroyImmediate(panelRoot.gameObject);
+        }
+
+        panelRoot = null;
+        biomeScrollGo = null;
+        biomeScrollContent = null;
+        variantsPanelGo = null;
+        variantsContent = null;
+        leftAreaGo = null;
+        rightAreaGo = null;
+        detailCardBg = null;
+        closeButton = null;
+        claimAllButton = null;
+        detailVariantsBtn = null;
+        detailClaimBtn = null;
+        wired = false;
         dataLoaded = false;
+
         EnsureDataLoaded();
         EnsureBuilt();
+        if (panelRoot != null)
+        {
+            panelRoot.localScale = savedScale;
+            panelRoot.sizeDelta = savedSize;
+        }
         WireButtons();
         if (modalBackdrop != null) modalBackdrop.gameObject.SetActive(true);
         if (panelRoot != null) panelRoot.gameObject.SetActive(true);
+        showingVariants = false;
+        if (allSpecies.Count > 0 && selectedDino == null) selectedDino = allSpecies[0];
+        BuildVariantsMatrix();
         RefreshUI();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+#endif
     }
 
     void WireButtons()
@@ -159,11 +199,7 @@ public class DinoIndexPopup : MonoBehaviour
         if (modalBackdrop != null)
         {
             Button bdBtn = modalBackdrop.GetComponent<Button>();
-            if (bdBtn != null)
-            {
-                bdBtn.onClick.RemoveAllListeners();
-                bdBtn.onClick.AddListener(delegate { if (closeOnBackdropClick) Hide(); });
-            }
+            if (bdBtn != null) Destroy(bdBtn);
         }
     }
 
@@ -701,7 +737,7 @@ public class DinoIndexPopup : MonoBehaviour
             Transform existingBd = uiParent.Find("IndexModalBackdrop");
             GameObject bdGo = existingBd != null
                 ? existingBd.gameObject
-                : new GameObject("IndexModalBackdrop", typeof(RectTransform), typeof(Image), typeof(Button));
+                : new GameObject("IndexModalBackdrop", typeof(RectTransform), typeof(Image));
             if (existingBd == null) bdGo.transform.SetParent(uiParent, false);
             RectTransform bdRt = bdGo.GetComponent<RectTransform>();
             bdRt.anchorMin = Vector2.zero;
@@ -784,8 +820,9 @@ public class DinoIndexPopup : MonoBehaviour
         closeRt.anchoredPosition = new Vector2(-14f, 0f);
         closeRt.sizeDelta = new Vector2(56f, 54f);
 
-        // Khu vực trái (Chứa BiomeScroll / VariantsPanel + Thanh Unlocked dưới đáy)
+        // Khu vực trái (Chứa BiomeScroll + Thanh Unlocked dưới đáy)
         RectTransform leftArea = CreatePanel(innerRt, "LeftArea", Color.clear);
+        leftAreaGo = leftArea.gameObject;
         leftArea.anchorMin = new Vector2(0f, 0f);
         leftArea.anchorMax = new Vector2(0.68f, 1f);
         leftArea.offsetMin = new Vector2(14f, 14f);
@@ -874,14 +911,14 @@ public class DinoIndexPopup : MonoBehaviour
         sr.vertical = true;
         sr.scrollSensitivity = 35f;
 
-        // Khung View 2: Ma trận Variants
+        // Khung View 2: Variants toàn chiều ngang dưới Header
         variantsPanelGo = new GameObject("VariantsMatrixPanel", typeof(RectTransform), typeof(Image));
-        variantsPanelGo.transform.SetParent(leftArea, false);
+        variantsPanelGo.transform.SetParent(innerRt, false);
         RectTransform vpRt = variantsPanelGo.GetComponent<RectTransform>();
         vpRt.anchorMin = new Vector2(0f, 0f);
         vpRt.anchorMax = new Vector2(1f, 1f);
-        vpRt.offsetMin = new Vector2(0f, 54f);
-        vpRt.offsetMax = Vector2.zero;
+        vpRt.offsetMin = new Vector2(14f, 14f);
+        vpRt.offsetMax = new Vector2(-14f, -84f);
         Image vpBg = variantsPanelGo.GetComponent<Image>();
         vpBg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 12);
         vpBg.type = Image.Type.Sliced;
@@ -891,6 +928,7 @@ public class DinoIndexPopup : MonoBehaviour
 
         // Khu vực phải (Cố định): Chi tiết + Rewards
         RectTransform rightArea = CreatePanel(innerRt, "RightArea", Color.clear);
+        rightAreaGo = rightArea.gameObject;
         rightArea.anchorMin = new Vector2(0.68f, 0f);
         rightArea.anchorMax = new Vector2(1f, 1f);
         rightArea.offsetMin = new Vector2(6f, 14f);
@@ -1044,6 +1082,11 @@ public class DinoIndexPopup : MonoBehaviour
     {
         if (selectedDino == null) return;
         showingVariants = !showingVariants;
+        if (showingVariants)
+        {
+            selectedVariantIndex = 0;
+            variantsScrollPos = 1f;
+        }
         RefreshUI();
     }
 
@@ -1069,20 +1112,57 @@ public class DinoIndexPopup : MonoBehaviour
         if (totalProgressFill != null) totalProgressFill.fillAmount = (float)unlockedCount / totalCount;
         if (totalProgressText != null) totalProgressText.text = "Unlocked: " + unlockedCount + "/" + allSpecies.Count;
 
-        // Trái: Biome Scroll hoặc Variants Matrix
+        // Chính: BiomeScroll + Detail hoặc Variants toàn chiều ngang
+        EnsureVariantsAreaLayout();
+        if (leftAreaGo != null) leftAreaGo.SetActive(!showingVariants);
+        if (rightAreaGo != null) rightAreaGo.SetActive(!showingVariants);
         if (biomeScrollGo != null) biomeScrollGo.SetActive(!showingVariants);
         if (variantsPanelGo != null) variantsPanelGo.SetActive(showingVariants);
 
-        if (!showingVariants) BuildBiomeSections();
-        else BuildVariantsMatrix();
+        if (!showingVariants)
+        {
+            BuildBiomeSections();
+            RefreshDetailPanel();
+        }
+        else
+        {
+            BuildVariantsMatrix();
+        }
+    }
 
-        RefreshDetailPanel();
+    void EnsureVariantsAreaLayout()
+    {
+        if (panelRoot == null) return;
+        if (leftAreaGo == null)
+        {
+            Transform la = panelRoot.Find("InnerBody/LeftArea") ?? panelRoot.Find("Inner/LeftArea");
+            if (la != null) leftAreaGo = la.gameObject;
+        }
+        if (rightAreaGo == null)
+        {
+            Transform ra = panelRoot.Find("InnerBody/RightArea") ?? panelRoot.Find("Inner/RightArea");
+            if (ra != null) rightAreaGo = ra.gameObject;
+        }
+        if (variantsPanelGo != null && leftAreaGo != null && variantsPanelGo.transform.parent == leftAreaGo.transform)
+        {
+            Transform inner = leftAreaGo.transform.parent;
+            if (inner != null)
+            {
+                variantsPanelGo.transform.SetParent(inner, false);
+                RectTransform vpRt = variantsPanelGo.GetComponent<RectTransform>();
+                vpRt.anchorMin = new Vector2(0f, 0f);
+                vpRt.anchorMax = new Vector2(1f, 1f);
+                vpRt.offsetMin = new Vector2(14f, 14f);
+                vpRt.offsetMax = new Vector2(-14f, -84f);
+            }
+        }
     }
 
     void BuildBiomeSections()
     {
         if (biomeScrollContent == null) return;
         ClearChildren(biomeScrollContent);
+        cardVisuals.Clear();
 
         for (int b = 0; b < biomes.Count; b++)
         {
@@ -1092,7 +1172,7 @@ public class DinoIndexPopup : MonoBehaviour
 
             int unlockedInBiome = CountUnlockedInBiome(bd, out int totalInBiome);
             int rows = Mathf.CeilToInt(species.Count / 3f);
-            float cardW = 148f, cardH = 126f, gap = 8f;
+            float cardH = 128f, gap = 8f;
             float gridH = rows * cardH + Mathf.Max(0, rows - 1) * gap;
             float barH = 44f;
             float totalH = Mathf.Max(220f, gridH + barH + 10f);
@@ -1103,15 +1183,15 @@ public class DinoIndexPopup : MonoBehaviour
 
             RectTransform secRt = secGo.GetComponent<RectTransform>();
 
-            // Cột trái: Thẻ Biome + COMPLETE rewards
+            // Cột trái: Thẻ Biome + COMPLETE rewards (co giãn theo % bề ngang)
             GameObject bCardGo = new GameObject("BiomeCard", typeof(RectTransform), typeof(Image));
             bCardGo.transform.SetParent(secRt, false);
             RectTransform bRt = bCardGo.GetComponent<RectTransform>();
             bRt.anchorMin = new Vector2(0f, 0f);
-            bRt.anchorMax = new Vector2(0f, 1f);
+            bRt.anchorMax = new Vector2(0.24f, 1f);
             bRt.pivot = new Vector2(0f, 0.5f);
             bRt.offsetMin = Vector2.zero;
-            bRt.offsetMax = new Vector2(158f, 0f);
+            bRt.offsetMax = Vector2.zero;
             Image bBg = bCardGo.GetComponent<Image>();
             bBg.sprite = bd.icon != null ? bd.icon : UIEffectUtil.GetRoundedRectSprite(64, 12);
             bBg.type = bd.icon != null ? Image.Type.Simple : Image.Type.Sliced;
@@ -1157,28 +1237,23 @@ public class DinoIndexPopup : MonoBehaviour
             compVals.rectTransform.offsetMin = new Vector2(4f, 6f);
             compVals.rectTransform.offsetMax = new Vector2(-4f, -18f);
 
-            // Cột phải: Lưới 3 cột Dino + Thanh Biome Progress / Claim
+            // Cột phải: Lưới 3 cột Dino (giãn đều hết chiều ngang) + Thanh Biome Progress / Claim
             RectTransform rightCol = CreatePanel(secRt, "RightCol", Color.clear);
-            rightCol.anchorMin = new Vector2(0f, 0f);
+            rightCol.anchorMin = new Vector2(0.252f, 0f);
             rightCol.anchorMax = new Vector2(1f, 1f);
-            rightCol.offsetMin = new Vector2(168f, 0f);
+            rightCol.offsetMin = Vector2.zero;
             rightCol.offsetMax = Vector2.zero;
 
-            GameObject gridGo = new GameObject("DinoGrid", typeof(RectTransform), typeof(GridLayoutGroup));
+            GameObject gridGo = new GameObject("DinoGrid", typeof(RectTransform));
             gridGo.transform.SetParent(rightCol, false);
             RectTransform gRt = gridGo.GetComponent<RectTransform>();
             gRt.anchorMin = new Vector2(0f, 0f);
             gRt.anchorMax = new Vector2(1f, 1f);
             gRt.offsetMin = new Vector2(0f, barH + 10f);
             gRt.offsetMax = Vector2.zero;
-            GridLayoutGroup glg = gridGo.GetComponent<GridLayoutGroup>();
-            glg.cellSize = new Vector2(cardW, cardH);
-            glg.spacing = new Vector2(gap, gap);
-            glg.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            glg.constraintCount = 3;
 
             for (int i = 0; i < species.Count; i++)
-                BuildDinoIndexCard(gRt, species[i]);
+                BuildDinoIndexCard(gRt, species[i], i, rows);
 
             // Thanh Biome Progress / COMPLETED
             bool isBiomeFull = totalInBiome > 0 && unlockedInBiome >= totalInBiome;
@@ -1239,15 +1314,28 @@ public class DinoIndexPopup : MonoBehaviour
         }
     }
 
-    void BuildDinoIndexCard(RectTransform parent, DinoData d)
+    void BuildDinoIndexCard(RectTransform parent, DinoData d, int index, int totalRows)
     {
         if (d == null) return;
         bool unlocked = unlockedSpecies.Contains(d);
         bool unclaimed = unlocked && !claimedSpecies.Contains(d);
         bool isSelected = d == selectedDino;
 
+        int col = index % 3;
+        int row = index / 3;
+        float x0 = col / 3f;
+        float x1 = (col + 1) / 3f;
+        float yTop = 1f - (float)row / Mathf.Max(1, totalRows);
+        float yBot = 1f - (float)(row + 1) / Mathf.Max(1, totalRows);
+
         GameObject go = new GameObject("Card_" + d.displayName, typeof(RectTransform), typeof(Image), typeof(Button));
         go.transform.SetParent(parent, false);
+        RectTransform cardRt = go.GetComponent<RectTransform>();
+        cardRt.anchorMin = new Vector2(x0, yBot);
+        cardRt.anchorMax = new Vector2(x1, yTop);
+        cardRt.offsetMin = new Vector2(4f, 4f);
+        cardRt.offsetMax = new Vector2(-4f, -4f);
+
         Image borderImg = go.GetComponent<Image>();
         borderImg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 12);
         borderImg.type = Image.Type.Sliced;
@@ -1255,7 +1343,9 @@ public class DinoIndexPopup : MonoBehaviour
 
         GameObject innerGo = new GameObject("Inner", typeof(RectTransform), typeof(Image));
         innerGo.transform.SetParent(go.transform, false);
-        Stretch(innerGo.GetComponent<RectTransform>(), isSelected ? 4f : 3f);
+        RectTransform innerRt = innerGo.GetComponent<RectTransform>();
+        Stretch(innerRt, isSelected ? 4f : 3f);
+        cardVisuals[d] = (borderImg, innerRt);
         Image innerImg = innerGo.GetComponent<Image>();
         innerImg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 10);
         innerImg.type = Image.Type.Sliced;
@@ -1309,10 +1399,28 @@ public class DinoIndexPopup : MonoBehaviour
         btn.targetGraphic = borderImg;
         btn.onClick.AddListener(delegate
         {
-            selectedDino = d;
-            RefreshUI();
+            SelectDinoCard(d);
         });
         UIEffectUtil.AttachButtonBounce(this, btn);
+    }
+
+    void SelectDinoCard(DinoData d)
+    {
+        if (d == null) return;
+        DinoData prev = selectedDino;
+        selectedDino = d;
+
+        if (prev != null && cardVisuals.TryGetValue(prev, out var prevVis))
+        {
+            if (prevVis.border != null) prevVis.border.color = new Color(0.06f, 0.08f, 0.10f, 1f);
+            if (prevVis.inner != null) Stretch(prevVis.inner, 3f);
+        }
+        if (cardVisuals.TryGetValue(d, out var curVis))
+        {
+            if (curVis.border != null) curVis.border.color = Color.white;
+            if (curVis.inner != null) Stretch(curVis.inner, 4f);
+        }
+        RefreshDetailPanel();
     }
 
     void BuildVariantsMatrix()
@@ -1323,167 +1431,273 @@ public class DinoIndexPopup : MonoBehaviour
         RectTransform root = variantsContent;
         int collected = CountCollectedCombos(selectedDino);
         int totalCombos = GetTotalComboSlotsPerDino();
+        int totalVars = Mathf.Max(1, allVariants.Count);
+        selectedVariantIndex = Mathf.Clamp(selectedVariantIndex, 0, totalVars - 1);
 
-        // Top Bar: "<DinoName> variants"  |  "X/Y collected" [X]
+        // 1. Top Bar: "<DinoName> variants"  |  "X/Y collected" [X]
         RectTransform topRow = CreatePanel(root, "TopRow", Color.clear);
         topRow.anchorMin = new Vector2(0f, 1f);
         topRow.anchorMax = new Vector2(1f, 1f);
         topRow.pivot = new Vector2(0.5f, 1f);
-        topRow.offsetMin = new Vector2(12f, -46f);
-        topRow.offsetMax = new Vector2(-12f, -4f);
+        topRow.offsetMin = new Vector2(16f, -52f);
+        topRow.offsetMax = new Vector2(-14f, -6f);
 
         string displayTitle = (unlockedSpecies.Contains(selectedDino) ? selectedDino.displayName : "???") + " variants";
-        TMP_Text vTitle = CreateTmp(topRow, "Title", displayTitle, 24f, Color.white, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
+        TMP_Text vTitle = CreateTmp(topRow, "Title", displayTitle, 28f, Color.white, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
         vTitle.rectTransform.anchorMax = new Vector2(0.55f, 1f);
+        vTitle.outlineWidth = 0.24f;
+        vTitle.outlineColor = Color.black;
 
-        TMP_Text vCount = CreateTmp(topRow, "Count", collected + "/" + totalCombos + " collected", 20f, new Color(1f, 0.85f, 0.25f), TextAlignmentOptions.MidlineRight, FontStyles.Bold);
+        TMP_Text vCount = CreateTmp(topRow, "Count", collected + "/" + totalCombos + " collected", 24f, new Color(1f, 0.85f, 0.25f), TextAlignmentOptions.MidlineRight, FontStyles.Bold);
         vCount.rectTransform.anchorMin = new Vector2(0.45f, 0f);
         vCount.rectTransform.anchorMax = new Vector2(1f, 1f);
-        vCount.rectTransform.offsetMax = new Vector2(-48f, 0f);
+        vCount.rectTransform.offsetMax = new Vector2(-56f, 0f);
+        vCount.outlineWidth = 0.22f;
+        vCount.outlineColor = Color.black;
 
-        Button backBtn = CreateStyledButton(topRow, "CloseVariants", "X", new Color(0.93f, 0.26f, 0.32f, 1f), 22f, out _);
+        Button backBtn = CreateStyledButton(topRow, "CloseVariants", "X", new Color(0.93f, 0.26f, 0.32f, 1f), 24f, out _);
         RectTransform backRt = (RectTransform)backBtn.transform;
         backRt.anchorMin = new Vector2(1f, 0.5f);
         backRt.anchorMax = new Vector2(1f, 0.5f);
         backRt.pivot = new Vector2(1f, 0.5f);
         backRt.anchoredPosition = Vector2.zero;
-        backRt.sizeDelta = new Vector2(38f, 38f);
+        backRt.sizeDelta = new Vector2(44f, 40f);
         backBtn.onClick.AddListener(delegate { showingVariants = false; RefreshUI(); });
 
-        // Bảng ma trận ở giữa
-        int cols = Mathf.Max(1, allSizes.Count);
-        int rows = Mathf.Max(1, allVariants.Count);
-        float leftLabelW = 104f;
-        float sizeHeaderH = 34f;
+        // 2. Khu vực chính: Bên trái danh sách Mutation (cuộn dọc) | Bên phải lưới 3x2 Size Cards
+        RectTransform bodyArea = CreatePanel(root, "BodyArea", Color.clear);
+        bodyArea.anchorMin = new Vector2(0f, 0f);
+        bodyArea.anchorMax = new Vector2(1f, 1f);
+        bodyArea.offsetMin = new Vector2(14f, 62f);
+        bodyArea.offsetMax = new Vector2(-14f, -56f);
 
-        // Hàng tên Size (cột)
-        RectTransform hdrRow = CreatePanel(root, "SizeHeaders", Color.clear);
-        hdrRow.anchorMin = new Vector2(0f, 1f);
-        hdrRow.anchorMax = new Vector2(1f, 1f);
-        hdrRow.offsetMin = new Vector2(leftLabelW + 10f, -48f - sizeHeaderH);
-        hdrRow.offsetMax = new Vector2(-10f, -48f);
+        // --- Sidebar Mutation bên trái (0 .. 0.295) ---
+        GameObject sideScrollGo = new GameObject("MutationScroll", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
+        sideScrollGo.transform.SetParent(bodyArea, false);
+        RectTransform sideRt = sideScrollGo.GetComponent<RectTransform>();
+        sideRt.anchorMin = new Vector2(0f, 0f);
+        sideRt.anchorMax = new Vector2(0.285f, 1f);
+        sideRt.offsetMin = Vector2.zero;
+        sideRt.offsetMax = Vector2.zero;
+        sideScrollGo.GetComponent<Image>().color = new Color(0.08f, 0.09f, 0.12f, 0.01f);
 
-        for (int c = 0; c < allSizes.Count; c++)
+        GameObject sideContentGo = new GameObject("Content", typeof(RectTransform));
+        sideContentGo.transform.SetParent(sideRt, false);
+        RectTransform sideContentRt = sideContentGo.GetComponent<RectTransform>();
+        sideContentRt.anchorMin = new Vector2(0f, 1f);
+        sideContentRt.anchorMax = new Vector2(1f, 1f);
+        sideContentRt.pivot = new Vector2(0.5f, 1f);
+        sideContentRt.anchoredPosition = Vector2.zero;
+
+        // Thanh cuộn mảnh bên phải danh sách Mutation
+        GameObject sbTrackGo = new GameObject("Scrollbar", typeof(RectTransform), typeof(Image), typeof(Scrollbar));
+        sbTrackGo.transform.SetParent(bodyArea, false);
+        RectTransform sbTrackRt = sbTrackGo.GetComponent<RectTransform>();
+        sbTrackRt.anchorMin = new Vector2(0.292f, 0.02f);
+        sbTrackRt.anchorMax = new Vector2(0.298f, 0.98f);
+        sbTrackRt.offsetMin = Vector2.zero;
+        sbTrackRt.offsetMax = Vector2.zero;
+        Image sbTrackImg = sbTrackGo.GetComponent<Image>();
+        sbTrackImg.sprite = UIEffectUtil.GetRoundedRectSprite(16, 4);
+        sbTrackImg.type = Image.Type.Sliced;
+        sbTrackImg.color = new Color(0.14f, 0.18f, 0.24f, 0.8f);
+
+        GameObject sbHandleGo = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+        sbHandleGo.transform.SetParent(sbTrackRt, false);
+        RectTransform sbHandleRt = sbHandleGo.GetComponent<RectTransform>();
+        Stretch(sbHandleRt, 0f);
+        Image sbHandleImg = sbHandleGo.GetComponent<Image>();
+        sbHandleImg.sprite = UIEffectUtil.GetRoundedRectSprite(16, 4);
+        sbHandleImg.type = Image.Type.Sliced;
+        sbHandleImg.color = new Color(0.35f, 0.72f, 0.92f, 0.95f);
+
+        Scrollbar sb = sbTrackGo.GetComponent<Scrollbar>();
+        sb.direction = Scrollbar.Direction.BottomToTop;
+        sb.handleRect = sbHandleRt;
+        sb.targetGraphic = sbHandleImg;
+
+        ScrollRect sideScroll = sideScrollGo.GetComponent<ScrollRect>();
+        sideScroll.viewport = sideRt;
+        sideScroll.content = sideContentRt;
+        sideScroll.horizontal = false;
+        sideScroll.vertical = true;
+        sideScroll.verticalScrollbar = sb;
+        sideScroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+        sideScroll.scrollSensitivity = 30f;
+
+        float tabH = 44f;
+        float tabGap = 6f;
+        int sizeTotal = Mathf.Max(1, allSizes.Count);
+        sideContentRt.sizeDelta = new Vector2(0f, allVariants.Count * (tabH + tabGap));
+
+        for (int vIdx = 0; vIdx < allVariants.Count; vIdx++)
         {
-            DinoSizeAsset sa = allSizes[c];
-            float x0 = (float)c / cols;
-            float x1 = (float)(c + 1) / cols;
-            string sName = sa != null && !string.IsNullOrEmpty(sa.displayName) ? sa.displayName.ToUpperInvariant() : ("SIZE " + c);
-            Color sCol = sa != null ? sa.tagColor : Color.white;
-            TMP_Text st = CreateTmp(hdrRow, "Col_" + sName, sName, 17f, sCol, TextAlignmentOptions.Center, FontStyles.Bold);
-            st.rectTransform.anchorMin = new Vector2(x0, 0f);
-            st.rectTransform.anchorMax = new Vector2(x1, 1f);
-            st.rectTransform.offsetMin = new Vector2(2f, 0f);
-            st.rectTransform.offsetMax = new Vector2(-2f, 0f);
-            st.enableAutoSizing = true;
-            st.fontSizeMin = 10f;
-            st.fontSizeMax = 17f;
-        }
+            DinoVariant va = allVariants[vIdx];
+            bool selected = vIdx == selectedVariantIndex;
+            int capturedIdx = vIdx;
 
-        // Lưới các hàng Variant
-        RectTransform gridArea = CreatePanel(root, "MatrixGrid", Color.clear);
-        gridArea.anchorMin = new Vector2(0f, 0f);
-        gridArea.anchorMax = new Vector2(1f, 1f);
-        gridArea.offsetMin = new Vector2(10f, 54f);
-        gridArea.offsetMax = new Vector2(-10f, -48f - sizeHeaderH);
+            int varCollected = 0;
+            for (int c = 0; c < allSizes.Count; c++)
+                if (IsComboUnlocked(selectedDino, va, allSizes[c])) varCollected++;
 
-        DinoSpawnTable tbl = null;
-        speciesTableMap.TryGetValue(selectedDino, out tbl);
+            GameObject tabGo = new GameObject("MutTab_" + vIdx, typeof(RectTransform), typeof(Image), typeof(Button));
+            tabGo.transform.SetParent(sideContentRt, false);
+            RectTransform tabRt = tabGo.GetComponent<RectTransform>();
+            tabRt.anchorMin = new Vector2(0f, 1f);
+            tabRt.anchorMax = new Vector2(1f, 1f);
+            tabRt.pivot = new Vector2(0.5f, 1f);
+            tabRt.anchoredPosition = new Vector2(0f, -vIdx * (tabH + tabGap));
+            tabRt.sizeDelta = new Vector2(0f, tabH);
 
-        for (int r = 0; r < rows; r++)
-        {
-            DinoVariant va = r < allVariants.Count ? allVariants[r] : null;
-            float yTop = 1f - (float)r / rows;
-            float yBot = 1f - (float)(r + 1) / rows;
+            Image tabBorder = tabGo.GetComponent<Image>();
+            tabBorder.sprite = UIEffectUtil.GetRoundedRectSprite(64, 10);
+            tabBorder.type = Image.Type.Sliced;
+            tabBorder.color = selected ? new Color(0.95f, 0.85f, 0.45f, 1f) : new Color(0.24f, 0.27f, 0.34f, 1f);
 
-            RectTransform rowRt = CreatePanel(gridArea, "Row_" + r, Color.clear);
-            rowRt.anchorMin = new Vector2(0f, yBot);
-            rowRt.anchorMax = new Vector2(1f, yTop);
-            rowRt.offsetMin = new Vector2(0f, 3f);
-            rowRt.offsetMax = new Vector2(0f, -3f);
+            GameObject tabInGo = new GameObject("Inner", typeof(RectTransform), typeof(Image));
+            tabInGo.transform.SetParent(tabRt, false);
+            Stretch(tabInGo.GetComponent<RectTransform>(), selected ? 2.5f : 2f);
+            Image tabInImg = tabInGo.GetComponent<Image>();
+            tabInImg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 8);
+            tabInImg.type = Image.Type.Sliced;
+            tabInImg.color = selected ? new Color(0.27f, 0.31f, 0.40f, 1f) : new Color(0.11f, 0.12f, 0.16f, 1f);
 
             string vName = va != null ? va.displayName.ToUpperInvariant() : "NORMAL";
             Color vCol = (va != null && va.useTint && va.tint.maxColorComponent > 0.15f)
                 ? va.tint
                 : (va != null && !va.isNormal ? new Color(1f, 0.82f, 0.25f) : Color.white);
-            TMP_Text rowLbl = CreateTmp(rowRt, "VarName", vName, 16f, vCol, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
-            rowLbl.rectTransform.anchorMin = new Vector2(0f, 0f);
-            rowLbl.rectTransform.anchorMax = new Vector2(0f, 1f);
-            rowLbl.rectTransform.offsetMin = Vector2.zero;
-            rowLbl.rectTransform.offsetMax = new Vector2(leftLabelW - 6f, 0f);
-            rowLbl.enableAutoSizing = true;
-            rowLbl.fontSizeMin = 10f;
-            rowLbl.fontSizeMax = 16f;
 
-            RectTransform cellsRt = CreatePanel(rowRt, "Cells", Color.clear);
-            cellsRt.anchorMin = new Vector2(0f, 0f);
-            cellsRt.anchorMax = new Vector2(1f, 1f);
-            cellsRt.offsetMin = new Vector2(leftLabelW, 0f);
-            cellsRt.offsetMax = Vector2.zero;
+            TMP_Text nameLbl = CreateTmp(tabInGo.GetComponent<RectTransform>(), "Name", vName, 20f, vCol, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
+            nameLbl.rectTransform.anchorMin = new Vector2(0f, 0f);
+            nameLbl.rectTransform.anchorMax = new Vector2(0.72f, 1f);
+            nameLbl.rectTransform.offsetMin = new Vector2(12f, 0f);
+            nameLbl.rectTransform.offsetMax = Vector2.zero;
+            nameLbl.enableAutoSizing = true;
+            nameLbl.fontSizeMin = 12f;
+            nameLbl.fontSizeMax = 20f;
+            nameLbl.outlineWidth = 0.24f;
+            nameLbl.outlineColor = Color.black;
 
-            for (int c = 0; c < cols; c++)
+            TMP_Text countLbl = CreateTmp(tabInGo.GetComponent<RectTransform>(), "Count", varCollected + "/" + sizeTotal, 18f, new Color(0.85f, 0.88f, 0.94f), TextAlignmentOptions.MidlineRight, FontStyles.Bold);
+            countLbl.rectTransform.anchorMin = new Vector2(0.68f, 0f);
+            countLbl.rectTransform.anchorMax = new Vector2(1f, 1f);
+            countLbl.rectTransform.offsetMin = Vector2.zero;
+            countLbl.rectTransform.offsetMax = new Vector2(-12f, 0f);
+            countLbl.outlineWidth = 0.22f;
+            countLbl.outlineColor = Color.black;
+
+            Button tabBtn = tabGo.GetComponent<Button>();
+            tabBtn.targetGraphic = tabBorder;
+            tabBtn.onClick.AddListener(delegate
             {
-                DinoSizeAsset sa = c < allSizes.Count ? allSizes[c] : null;
-                bool hasCombo = IsComboUnlocked(selectedDino, va, sa);
-                float x0 = (float)c / cols;
-                float x1 = (float)(c + 1) / cols;
+                variantsScrollPos = sideScroll.verticalNormalizedPosition;
+                selectedVariantIndex = capturedIdx;
+                BuildVariantsMatrix();
+            });
+            UIEffectUtil.AttachButtonBounce(this, tabBtn);
+        }
+        sideScroll.verticalNormalizedPosition = Mathf.Clamp01(variantsScrollPos);
 
-                GameObject cellGo = new GameObject("Cell_" + r + "_" + c, typeof(RectTransform), typeof(Image));
-                cellGo.transform.SetParent(cellsRt, false);
-                RectTransform cellRt = cellGo.GetComponent<RectTransform>();
-                cellRt.anchorMin = new Vector2(x0, 0f);
-                cellRt.anchorMax = new Vector2(x1, 1f);
-                cellRt.offsetMin = new Vector2(3f, 2f);
-                cellRt.offsetMax = new Vector2(-3f, -2f);
-                Image cellBg = cellGo.GetComponent<Image>();
-                cellBg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 8);
-                cellBg.type = Image.Type.Sliced;
-                cellBg.color = hasCombo ? Color.white : new Color(0.14f, 0.16f, 0.20f, 1f);
+        // --- Lưới 3x2 Size Cards bên phải (0.31 .. 1.0) ---
+        RectTransform gridArea = CreatePanel(bodyArea, "SizeGridArea", Color.clear);
+        gridArea.anchorMin = new Vector2(0.31f, 0f);
+        gridArea.anchorMax = new Vector2(1f, 1f);
+        gridArea.offsetMin = Vector2.zero;
+        gridArea.offsetMax = Vector2.zero;
 
-                GameObject inGo = new GameObject("Inner", typeof(RectTransform), typeof(Image));
-                inGo.transform.SetParent(cellRt, false);
-                Stretch(inGo.GetComponent<RectTransform>(), 2f);
-                Image inImg = inGo.GetComponent<Image>();
-                inImg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 7);
-                inImg.type = Image.Type.Sliced;
-                inImg.color = hasCombo ? new Color(0.29f, 0.34f, 0.43f, 1f) : new Color(0.09f, 0.10f, 0.13f, 1f);
+        DinoVariant activeVar = allVariants.Count > 0 ? allVariants[selectedVariantIndex] : null;
+        DinoSpawnTable tbl = null;
+        speciesTableMap.TryGetValue(selectedDino, out tbl);
 
-                GameObject icGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-                icGo.transform.SetParent(inGo.transform, false);
-                RectTransform icRt = icGo.GetComponent<RectTransform>();
-                float sizeScale = sa != null ? Mathf.Clamp(0.65f + (sa.scaleMultiplier - 1f) * 0.22f, 0.5f, 1.05f) : 0.8f;
-                float padFrac = (1f - sizeScale * 0.72f) * 0.5f;
-                icRt.anchorMin = new Vector2(padFrac, 0.24f);
-                icRt.anchorMax = new Vector2(1f - padFrac, 0.94f);
-                icRt.offsetMin = Vector2.zero;
-                icRt.offsetMax = Vector2.zero;
-                Image icImg = icGo.GetComponent<Image>();
-                icImg.sprite = selectedDino.icon != null ? selectedDino.icon : GetDinoFallbackSprite();
-                icImg.preserveAspect = true;
-                if (hasCombo)
-                    icImg.color = (va != null && va.useTint) ? va.tint : Color.white;
-                else
-                    icImg.color = new Color(0.06f, 0.07f, 0.08f, 0.9f);
+        int cols = 3;
+        int rows = Mathf.Max(1, Mathf.CeilToInt(allSizes.Count / (float)cols));
 
-                if (!hasCombo)
-                {
-                    string odds = ComputeComboOddsText(va, sa, tbl);
-                    TMP_Text oddsTxt = CreateTmp(inGo.GetComponent<RectTransform>(), "Odds", odds, 12f, new Color(0.75f, 0.78f, 0.82f), TextAlignmentOptions.Bottom, FontStyles.Bold);
-                    oddsTxt.rectTransform.offsetMin = new Vector2(2f, 2f);
-                    oddsTxt.rectTransform.offsetMax = new Vector2(-2f, 0f);
-                    oddsTxt.enableAutoSizing = true;
-                    oddsTxt.fontSizeMin = 8f;
-                    oddsTxt.fontSizeMax = 12f;
-                }
+        for (int sIdx = 0; sIdx < allSizes.Count; sIdx++)
+        {
+            DinoSizeAsset sa = allSizes[sIdx];
+            bool hasCombo = IsComboUnlocked(selectedDino, activeVar, sa);
+
+            int col = sIdx % cols;
+            int row = sIdx / cols;
+            float x0 = (float)col / cols;
+            float x1 = (float)(col + 1) / cols;
+            float yTop = 1f - (float)row / rows;
+            float yBot = 1f - (float)(row + 1) / rows;
+
+            GameObject cardGo = new GameObject("SizeCard_" + sIdx, typeof(RectTransform), typeof(Image));
+            cardGo.transform.SetParent(gridArea, false);
+            RectTransform cardRt = cardGo.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(x0, yBot);
+            cardRt.anchorMax = new Vector2(x1, yTop);
+            cardRt.offsetMin = new Vector2(5f, 5f);
+            cardRt.offsetMax = new Vector2(-5f, -5f);
+
+            Image cardBorder = cardGo.GetComponent<Image>();
+            cardBorder.sprite = UIEffectUtil.GetRoundedRectSprite(64, 12);
+            cardBorder.type = Image.Type.Sliced;
+            cardBorder.color = hasCombo ? new Color(0.76f, 0.80f, 0.88f, 1f) : new Color(0.18f, 0.20f, 0.25f, 1f);
+
+            GameObject inGo = new GameObject("Inner", typeof(RectTransform), typeof(Image));
+            inGo.transform.SetParent(cardRt, false);
+            Stretch(inGo.GetComponent<RectTransform>(), 2.5f);
+            Image inImg = inGo.GetComponent<Image>();
+            inImg.sprite = UIEffectUtil.GetRoundedRectSprite(64, 10);
+            inImg.type = Image.Type.Sliced;
+            inImg.color = hasCombo ? new Color(0.28f, 0.33f, 0.42f, 1f) : new Color(0.09f, 0.10f, 0.13f, 1f);
+
+            RectTransform inRt = inGo.GetComponent<RectTransform>();
+            string sName = sa != null && !string.IsNullOrEmpty(sa.displayName) ? sa.displayName.ToUpperInvariant() : ("SIZE " + sIdx);
+            Color sCol = hasCombo ? Color.white : (sa != null ? sa.tagColor : Color.white);
+            TMP_Text sizeLbl = CreateTmp(inRt, "SizeName", sName, 20f, sCol, TextAlignmentOptions.Top, FontStyles.Bold);
+            sizeLbl.rectTransform.anchorMin = new Vector2(0f, 0.76f);
+            sizeLbl.rectTransform.anchorMax = new Vector2(1f, 1f);
+            sizeLbl.rectTransform.offsetMin = new Vector2(6f, 0f);
+            sizeLbl.rectTransform.offsetMax = new Vector2(-6f, -6f);
+            sizeLbl.enableAutoSizing = true;
+            sizeLbl.fontSizeMin = 12f;
+            sizeLbl.fontSizeMax = 20f;
+            sizeLbl.outlineWidth = 0.24f;
+            sizeLbl.outlineColor = Color.black;
+
+            GameObject icGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            icGo.transform.SetParent(inRt, false);
+            RectTransform icRt = icGo.GetComponent<RectTransform>();
+            float sizeScale = sa != null ? Mathf.Clamp(0.62f + (sa.scaleMultiplier - 1f) * 0.24f, 0.48f, 1.05f) : 0.78f;
+            float padFrac = (1f - sizeScale * 0.68f) * 0.5f;
+            icRt.anchorMin = new Vector2(padFrac, hasCombo ? 0.12f : 0.22f);
+            icRt.anchorMax = new Vector2(1f - padFrac, 0.78f);
+            icRt.offsetMin = Vector2.zero;
+            icRt.offsetMax = Vector2.zero;
+            Image icImg = icGo.GetComponent<Image>();
+            icImg.sprite = selectedDino.icon != null ? selectedDino.icon : GetDinoFallbackSprite();
+            icImg.preserveAspect = true;
+            if (hasCombo)
+                icImg.color = (activeVar != null && activeVar.useTint) ? activeVar.tint : Color.white;
+            else
+                icImg.color = new Color(0.06f, 0.07f, 0.08f, 0.9f);
+
+            if (!hasCombo)
+            {
+                string odds = ComputeComboOddsText(activeVar, sa, tbl);
+                TMP_Text oddsTxt = CreateTmp(inRt, "Odds", odds, 16f, new Color(0.76f, 0.80f, 0.85f), TextAlignmentOptions.Bottom, FontStyles.Bold);
+                oddsTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
+                oddsTxt.rectTransform.anchorMax = new Vector2(1f, 0.24f);
+                oddsTxt.rectTransform.offsetMin = new Vector2(4f, 5f);
+                oddsTxt.rectTransform.offsetMax = new Vector2(-4f, 0f);
+                oddsTxt.enableAutoSizing = true;
+                oddsTxt.fontSizeMin = 10f;
+                oddsTxt.fontSizeMax = 16f;
+                oddsTxt.outlineWidth = 0.2f;
+                oddsTxt.outlineColor = Color.black;
             }
         }
 
-        // 2 thanh thưởng bên dưới: ALL SIZES & ALL MUTATIONS
+        // 3. 2 thanh thưởng bên dưới: ALL SIZES & ALL MUTATIONS
         RectTransform botRow = CreatePanel(root, "BottomBonusRow", Color.clear);
         botRow.anchorMin = new Vector2(0f, 0f);
         botRow.anchorMax = new Vector2(1f, 0f);
-        botRow.offsetMin = new Vector2(10f, 6f);
-        botRow.offsetMax = new Vector2(-10f, 48f);
+        botRow.offsetMin = new Vector2(14f, 8f);
+        botRow.offsetMax = new Vector2(-14f, 54f);
 
         int dSizes = CountDistinctSizesForDino(selectedDino);
         int tSizes = Mathf.Max(1, allSizes.Count);
@@ -1528,14 +1742,31 @@ public class DinoIndexPopup : MonoBehaviour
         fImg.color = (canClaim && !claimed) ? new Color(0.35f, 0.90f, 0.20f, 1f) : new Color(0.22f, 0.72f, 0.24f, 1f);
 
         string finalLabel = claimed ? txt + " ✓" : txt;
-        TMP_Text labelTmp = CreateTmp(rt, "Label", finalLabel, 16f, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
-        labelTmp.rectTransform.offsetMin = new Vector2(6f, 0f);
-        labelTmp.rectTransform.offsetMax = new Vector2(-6f, 0f);
+        TMP_Text labelTmp = CreateTmp(rt, "Label", finalLabel, 18f, Color.white, TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
+        labelTmp.rectTransform.offsetMin = new Vector2(14f, 0f);
+        labelTmp.rectTransform.offsetMax = new Vector2(-44f, 0f);
         labelTmp.enableAutoSizing = true;
-        labelTmp.fontSizeMin = 10f;
-        labelTmp.fontSizeMax = 16f;
+        labelTmp.fontSizeMin = 11f;
+        labelTmp.fontSizeMax = 18f;
         labelTmp.outlineWidth = 0.22f;
         labelTmp.outlineColor = Color.black;
+
+        GameManager gm = GameManager.Instance;
+        if (gm != null && gm.cashIcon != null)
+        {
+            GameObject icGo = new GameObject("CashIcon", typeof(RectTransform), typeof(Image));
+            icGo.transform.SetParent(rt, false);
+            RectTransform icRt = icGo.GetComponent<RectTransform>();
+            icRt.anchorMin = new Vector2(1f, 0.5f);
+            icRt.anchorMax = new Vector2(1f, 0.5f);
+            icRt.pivot = new Vector2(1f, 0.5f);
+            icRt.anchoredPosition = new Vector2(-10f, 0f);
+            icRt.sizeDelta = new Vector2(28f, 28f);
+            Image icImg = icGo.GetComponent<Image>();
+            icImg.sprite = gm.cashIcon;
+            icImg.preserveAspect = true;
+            icImg.raycastTarget = false;
+        }
 
         Button btn = go.GetComponent<Button>();
         btn.targetGraphic = bg;

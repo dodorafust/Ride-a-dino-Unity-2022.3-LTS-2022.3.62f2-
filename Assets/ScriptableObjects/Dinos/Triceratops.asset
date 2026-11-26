@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Triceratops
   m_EditorClassIdentifier: 
   displayName: Triceratops
-  rarity: 3
+  rarity: 2
   size: 4
   diet: 0
   zone: 2
@@ -26,9 +26,9 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.52
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 55
-  requiredStamina: 600
-  tameTime: 6
+  baseMoney: 350
+  requiredStamina: 400
+  tameTime: 5.5
   runSpeed: 22
   riddenSpeedMultiplier: 1
   killOnStaminaEmptyIfUntamed: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 17500
+  indexRewardStamina: 145
+  indexAllSizesRewardCash: 35000
+  indexAllVariantsRewardCash: 140000

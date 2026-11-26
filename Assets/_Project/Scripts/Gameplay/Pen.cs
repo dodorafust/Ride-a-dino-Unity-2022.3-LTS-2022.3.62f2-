@@ -14,27 +14,56 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
 
     [Header("Level / Slots")]
     public int level = 1;
-    public int maxLevel = 10;
+    public int maxLevel = 9;
     public int baseSlots = 3;
     public int slotsPerLevel = 2;
     public double baseUpgradeCost = 100;
-    public double upgradeCostMultiplier = 3;
+    public double upgradeCostMultiplier = 46.42;
+    [Tooltip("Bảng giá nâng cấp từng cấp (tùy chọn, phần tử 0 = giá nâng Lv 1 -> 2). Nếu để trống hoặc 0 sẽ dùng Base Upgrade Cost * Multiplier^(level-1).")]
+    public double[] upgradeCosts = new double[]
+    {
+        100,                // Lv 1 -> 2 ($100)
+        5000,               // Lv 2 -> 3 ($5K)
+        200000,             // Lv 3 -> 4 ($200K)
+        10000000,           // Lv 4 -> 5 ($10M)
+        500000000,          // Lv 5 -> 6 ($500M)
+        25000000000,        // Lv 6 -> 7 ($25B)
+        1000000000000,      // Lv 7 -> 8 ($1T)
+        50000000000000      // Lv 8 -> 9 ($50T)
+    };
 
     [Header("Skin theo level (model hàng rào)")]
     public LevelVisual[] levelVisuals;
+
+    [Header("Mở rộng diện tích chuồng theo Level")]
+    [Tooltip("Bật nếu muốn tự động mở rộng BoxCollider Area (và phóng to model hàng rào) mỗi khi nâng cấp (áp dụng khi tier không có Area riêng).")]
+    public bool autoExpandAreaPerLevel = false;
+    [Tooltip("Số mét cộng thêm vào chiều rộng (X) và chiều dài (Z) của Area ở mỗi cấp tăng thêm.")]
+    public Vector2 areaExpandPerLevelXZ = new Vector2(2f, 2f);
+    [Tooltip("Tự phóng to model hàng rào đang bật theo đúng tỉ lệ mở rộng X/Z của Area.")]
+    public bool autoScaleVisualWithArea = true;
 
     [Header("Economy")]
     public bool autoDeposit = true;      // true: tiền vào ví realtime bất cứ đâu, không cần bấm Collect hay vào chuồng
 
     [Header("Vị trí chữ & tiền trên đầu Dino trong chuồng")]
-    public float dinoLabelHeadPadding = 0.6f;
+    public float dinoLabelHeadPadding = 1.4f;
     public float dinoMoneyPopupHeadPadding = 0.35f;
 
     // ---- IUpgradable
     public string UpgradeName { get { return "PEN"; } }
     public int Level { get { return level; } }
     public bool IsMaxLevel { get { return level >= maxLevel; } }
-    public double UpgradeCost { get { return baseUpgradeCost * Math.Pow(upgradeCostMultiplier, level - 1); } }
+    public double UpgradeCost
+    {
+        get
+        {
+            int idx = level - 1;
+            if (upgradeCosts != null && idx >= 0 && idx < upgradeCosts.Length && upgradeCosts[idx] > 0)
+                return upgradeCosts[idx];
+            return baseUpgradeCost * Math.Pow(upgradeCostMultiplier, idx);
+        }
+    }
     public string NextLevelInfo { get { return "+" + slotsPerLevel + " slots"; } }
     public event Action Changed;
 
@@ -45,11 +74,20 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
     public IReadOnlyList<OwnedDino> Active { get { return active; } }
     public Bounds AreaBounds
     {
-        get { return area != null ? area.bounds : new Bounds(transform.position, new Vector3(16f, 1f, 10f)); }
+        get
+        {
+            Collider c = activeArea != null ? activeArea : area;
+            return c != null ? c.bounds : new Bounds(transform.position, new Vector3(16f, 1f, 10f));
+        }
     }
 
     readonly List<OwnedDino> active = new List<OwnedDino>();
     readonly Dictionary<OwnedDino, PenDino> visuals = new Dictionary<OwnedDino, PenDino>();
+    readonly Dictionary<GameObject, Vector3> baseVisualScales = new Dictionary<GameObject, Vector3>();
+
+    Collider activeArea;
+    Vector3 baseAreaSize;
+    bool hasBaseAreaSize;
 
     LineRenderer ring;
     WorldLabel label;
@@ -58,6 +96,20 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
     void Awake()
     {
         if (area == null) area = GetComponentInChildren<Collider>();
+        activeArea = area;
+        if (area is BoxCollider box)
+        {
+            baseAreaSize = box.size;
+            hasBaseAreaSize = true;
+        }
+        if (levelVisuals != null)
+        {
+            for (int i = 0; i < levelVisuals.Length; i++)
+            {
+                if (levelVisuals[i] != null && levelVisuals[i].root != null && !baseVisualScales.ContainsKey(levelVisuals[i].root))
+                    baseVisualScales[levelVisuals[i].root] = levelVisuals[i].root.transform.localScale;
+            }
+        }
 
         var go = new GameObject("PenRing");
         go.transform.SetParent(transform, false);
@@ -75,6 +127,67 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
 
     void Start()
     {
+        if (showFloatingLabel && GameManager.Instance != null)
+            label = GameManager.Instance.CreateLabel(transform, labelOffset, "");
+        ApplyLevelVisualsAndArea();
+        RefreshLabel();
+    }
+
+    void ApplyLevelVisualsAndArea()
+    {
+        LevelVisual.Apply(levelVisuals, level);
+        LevelVisual activeLv = LevelVisual.GetActive(levelVisuals, level);
+
+        Collider tierArea = null;
+        if (activeLv != null)
+        {
+            if (activeLv.areaOverride != null)
+            {
+                tierArea = activeLv.areaOverride;
+            }
+            else if (activeLv.root != null)
+            {
+                Transform areaChild = activeLv.root.transform.Find("Area");
+                if (areaChild != null) tierArea = areaChild.GetComponent<Collider>();
+            }
+        }
+
+        if (tierArea != null)
+        {
+            activeArea = tierArea;
+        }
+        else
+        {
+            activeArea = area;
+            if (autoExpandAreaPerLevel && hasBaseAreaSize && area is BoxCollider box)
+            {
+                int extraLevels = Mathf.Max(0, level - 1);
+                Vector3 targetSize = new Vector3(
+                    baseAreaSize.x + areaExpandPerLevelXZ.x * extraLevels,
+                    baseAreaSize.y,
+                    baseAreaSize.z + areaExpandPerLevelXZ.y * extraLevels);
+                box.size = targetSize;
+
+                if (autoScaleVisualWithArea && activeLv != null && activeLv.root != null &&
+                    baseVisualScales.TryGetValue(activeLv.root, out Vector3 baseScale))
+                {
+                    float scaleX = baseAreaSize.x > 0.001f ? targetSize.x / baseAreaSize.x : 1f;
+                    float scaleZ = baseAreaSize.z > 0.001f ? targetSize.z / baseAreaSize.z : 1f;
+                    activeLv.root.transform.localScale = new Vector3(
+                        baseScale.x * scaleX,
+                        baseScale.y,
+                        baseScale.z * scaleZ);
+                }
+            }
+        }
+
+        Physics.SyncTransforms();
+        RefreshPenRing();
+    }
+
+    void RefreshPenRing()
+    {
+        if (ring == null) return;
         Bounds b = AreaBounds;
         float y = b.min.y + 0.1f;
         float m = 0.3f;
@@ -82,11 +195,6 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
         ring.SetPosition(1, new Vector3(b.min.x + m, y, b.max.z - m));
         ring.SetPosition(2, new Vector3(b.max.x - m, y, b.max.z - m));
         ring.SetPosition(3, new Vector3(b.max.x - m, y, b.min.z + m));
-
-        if (showFloatingLabel && GameManager.Instance != null)
-            label = GameManager.Instance.CreateLabel(transform, labelOffset, "");
-        LevelVisual.Apply(levelVisuals, level);
-        RefreshLabel();
     }
 
 #if UNITY_EDITOR
@@ -297,8 +405,31 @@ public class Pen : MonoBehaviour, IClickable, IUpgradable
             return;
         }
         level++;
-        LevelVisual.Apply(levelVisuals, level);
+        ApplyLevelVisualsAndArea();
         HudController.Say("Pen upgraded to Lv " + level + "  (" + Slots + " slots)");
         Fire();
+    }
+
+    [ContextMenu("Apply Balanced Costs (9 Pens, Lv7->8 = $1T)")]
+    void ApplyBalancedNineLevelCosts()
+    {
+        maxLevel = 9;
+        baseUpgradeCost = 100;
+        upgradeCostMultiplier = 46.42;
+        upgradeCosts = new double[]
+        {
+            100,
+            5000,
+            200000,
+            10000000,
+            500000000,
+            25000000000,
+            1000000000000,
+            50000000000000
+        };
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+        OnValidate();
+#endif
     }
 }

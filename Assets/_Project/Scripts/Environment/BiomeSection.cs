@@ -13,8 +13,8 @@ public class BiomeSection : MonoBehaviour
     public DinoSpawnTable fallbackSpawnTable;
     public bool overrideFog = true;
     public Color fallbackFogColor = new Color(0.72f, 0.86f, 0.96f, 1f);
-    public float fallbackFogStart = 48f;
-    public float fallbackFogEnd = 95f;
+    public float fallbackFogStart = 56f;
+    public float fallbackFogEnd = 112f;
     public bool overrideLight = false;
     public Color fallbackLightColor = Color.white;
     public float fallbackLightIntensity = 1f;

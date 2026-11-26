@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a65dab511e384d988eda30e8a114b, type: 3}
+  m_Name: Terror Bird
+  m_EditorClassIdentifier: 
+  displayName: Terror Bird
+  rarity: 1
+  size: 1
+  diet: 0
+  zone: 1
+  icon: {fileID: 0}
+  modelPrefab: {fileID: 5080262030209857071, guid: 1da647b91ae32504bb6fc435eaa2d15b, type: 3}
+  animatorController: {fileID: 22100000, guid: de5843f81b6f8014a86ba047090e5396, type: 2}
+  modelScale: 0.8
+  seatBoneName: spine
+  seatOffset: {x: 0, y: 1.8, z: 0}
+  seatSizeScaleWeight: 0.35
+  holdPositionOffset: {x: 0, y: 0, z: 0}
+  holdRotationOffset: {x: 0, y: 0, z: 0}
+  baseMoney: 12
+  requiredStamina: 38
+  tameTime: 4.5
+  runSpeed: 25
+  riddenSpeedMultiplier: 1.05
+  killOnStaminaEmptyIfUntamed: 0
+  killCutsceneStyle: 0
+  allowKillPounceBite: 0
+  allowKillTossSwallow: 0
+  allowKillStomp: 1
+  killCameraStyle: 0
+  maxAliveOnTrack: 8
+  wildSmashBreakables: 1
+  eatRadiusBonus: 0
+  eatCenterOffset: {x: 0, y: 0, z: 1.4}
+  mouthBoneName: head
+  mouthOffset: {x: 0, y: 1.4, z: 1.6}
+  eatDebrisCount: 6
+  eatShakeIntensity: 0.25
+  eatShakeDuration: 0.18
+  largerDinoPushWeight: 2.2
+  maxSeparationPush: 2.5
+  yieldToRiddenCarnivore: 0
+  indexRewardCash: 600
+  indexRewardStamina: 28
+  indexAllSizesRewardCash: 1200
+  indexAllVariantsRewardCash: 4800

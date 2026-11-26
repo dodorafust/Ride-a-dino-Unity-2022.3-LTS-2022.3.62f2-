@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Carnotaurus
   m_EditorClassIdentifier: 
   displayName: Carnotaurus
-  rarity: 3
+  rarity: 5
   size: 3
   diet: 1
-  zone: 2
+  zone: 3
   icon: {fileID: 0}
   modelPrefab: {fileID: 1791267381089546267, guid: dac4ffbc5d0b8b94e86a28a6a35152a0, type: 3}
   animatorController: {fileID: 22100000, guid: 12fc09c645c121b46a59a24dc85035ee, type: 2}
@@ -26,11 +26,11 @@ MonoBehaviour:
   seatSizeScaleWeight: 0.55
   holdPositionOffset: {x: 0, y: 0, z: 0}
   holdRotationOffset: {x: 0, y: 0, z: 0}
-  baseMoney: 15
-  requiredStamina: 120
-  tameTime: 6
-  runSpeed: 34
-  riddenSpeedMultiplier: 1
+  baseMoney: 18500
+  requiredStamina: 10500
+  tameTime: 7
+  runSpeed: 31
+  riddenSpeedMultiplier: 1.08
   killOnStaminaEmptyIfUntamed: 0
   killCutsceneStyle: 0
   allowKillPounceBite: 1
@@ -49,7 +49,7 @@ MonoBehaviour:
   largerDinoPushWeight: 2.2
   maxSeparationPush: 2.5
   yieldToRiddenCarnivore: 0
-  indexRewardCash: 0
-  indexRewardStamina: 0
-  indexAllSizesRewardCash: 0
-  indexAllVariantsRewardCash: 0
+  indexRewardCash: 925000
+  indexRewardStamina: 800
+  indexAllSizesRewardCash: 1850000
+  indexAllVariantsRewardCash: 7400000

@@ -25,15 +25,32 @@ public class RideRingsUI : MonoBehaviour
     public Color staminaTrailColor = Color.white;
     [Min(0f)] public float trailHoldTime = 0.08f;
     [Min(0.05f)] public float trailShrinkSpeed = 0.75f;
+
+    [Header("Các vòng Stamina phụ bên ngoài (tự tạo nếu để trống)")]
+    public Image[] extraStaminaRings;
+    public float extraRingScaleStep = 0.24f;
+    public Color[] extraRingColors = new Color[]
+    {
+        new Color(0.18f, 0.72f, 0.25f, 1f),
+        new Color(0.12f, 0.58f, 0.20f, 1f)
+    };
+    public Color extraRingBgColor = new Color(0.08f, 0.12f, 0.10f, 0.50f);
     public Color tameColor = new Color(1f, 0.4f, 0.65f);
     public Color tameDoneColor = new Color(1f, 0.85f, 0.1f);
     public float tameDoneFadeDelay = 0.2f;
     public float tameDoneFadeDuration = 0.45f;
 
+    Image[] extraRingBgs;
+    Image[] extraRingTrails;
+    float[] extraLastValues;
+    float[] extraTrailValues;
+    float[] extraTrailTimers;
+    bool extraRingsBuilt;
+
     CanvasGroup tameGroup;
     bool wasTamed;
     float tameDoneTimer;
-    float lastStaminaValue = 1f;
+    float lastCoreValue = 1f;
     float trailValue = 1f;
     float trailHoldTimer;
 
@@ -47,11 +64,13 @@ public class RideRingsUI : MonoBehaviour
             springVel = Vector2.zero;
             wasTamed = false;
             tameDoneTimer = 0f;
-            lastStaminaValue = 1f;
+            lastCoreValue = 1f;
             trailValue = 1f;
             trailHoldTimer = 0f;
             if (staminaTrailFill != null) staminaTrailFill.fillAmount = 1f;
             if (tameGroup != null) tameGroup.alpha = 1f;
+            ResetExtraTrails();
+            SetExtraRingsVisible(false);
             return;
         }
 
@@ -69,30 +88,13 @@ public class RideRingsUI : MonoBehaviour
         if (sp.z < 0f) return;
         transform.position = new Vector3(sp.x, sp.y, 0f);
 
-        float s = ride.Stamina01;
+        float totalRings = Mathf.Max(1f, ride.TotalRings);
+        float remRings = ride.RingsRemaining;
+        float core = Mathf.Clamp01(remRings);
         if (staminaFill != null)
         {
             EnsureTrailFill();
-            if (s > lastStaminaValue + 0.01f)
-            {
-                // Vừa nhảy sang Dino mới -> reset vệt trắng về đầy ngay
-                trailValue = s;
-                trailHoldTimer = 0f;
-            }
-            else if (s < lastStaminaValue - 0.0001f)
-            {
-                // Vừa tụt 1 khúc -> giữ vệt trắng ở mức cũ trong trailHoldTime rồi mới thu gọn
-                if (trailValue < lastStaminaValue) trailValue = lastStaminaValue;
-                trailHoldTimer = trailHoldTime;
-            }
-            lastStaminaValue = s;
-
-            if (trailHoldTimer > 0f)
-                trailHoldTimer -= dt;
-            else if (trailValue > s)
-                trailValue = Mathf.MoveTowards(trailValue, s, Mathf.Max(0.05f, trailShrinkSpeed) * dt);
-            else
-                trailValue = s;
+            UpdateTrailState(core, ref lastCoreValue, ref trailValue, ref trailHoldTimer, dt);
 
             if (staminaTrailFill != null)
             {
@@ -100,8 +102,10 @@ public class RideRingsUI : MonoBehaviour
                 staminaTrailFill.color = staminaTrailColor;
             }
 
-            staminaFill.fillAmount = s;
-            staminaFill.color = ride.IsLowStamina ? staminaLow : (s > 0.5f ? staminaHigh : staminaMid);
+            staminaFill.fillAmount = core;
+            staminaFill.color = ride.IsLowStamina ? staminaLow : (core > 0.5f ? staminaHigh : staminaMid);
+
+            UpdateExtraRings(totalRings, remRings, dt);
         }
         if (tameFill != null)
         {
@@ -183,5 +187,223 @@ public class RideRingsUI : MonoBehaviour
         staminaTrailFill.raycastTarget = false;
         staminaTrailFill.color = staminaTrailColor;
         staminaTrailFill.fillAmount = 1f;
+    }
+
+    void EnsureExtraRings(int needed)
+    {
+        if (staminaFill == null || needed <= 0) return;
+        if (extraStaminaRings != null && extraStaminaRings.Length >= needed && extraRingsBuilt) return;
+
+        if (extraStaminaRings == null || extraStaminaRings.Length < needed)
+        {
+            var newRings = new Image[needed];
+            if (extraStaminaRings != null)
+            {
+                for (int i = 0; i < extraStaminaRings.Length; i++)
+                    newRings[i] = extraStaminaRings[i];
+            }
+            extraStaminaRings = newRings;
+        }
+        if (extraRingBgs == null || extraRingBgs.Length < needed)
+        {
+            var newBgs = new Image[needed];
+            if (extraRingBgs != null)
+            {
+                for (int i = 0; i < extraRingBgs.Length; i++)
+                    newBgs[i] = extraRingBgs[i];
+            }
+            extraRingBgs = newBgs;
+        }
+        if (extraRingTrails == null || extraRingTrails.Length < needed)
+        {
+            var newTrails = new Image[needed];
+            if (extraRingTrails != null)
+            {
+                for (int i = 0; i < extraRingTrails.Length; i++)
+                    newTrails[i] = extraRingTrails[i];
+            }
+            extraRingTrails = newTrails;
+            extraLastValues = new float[needed];
+            extraTrailValues = new float[needed];
+            extraTrailTimers = new float[needed];
+            for (int i = 0; i < needed; i++)
+            {
+                extraLastValues[i] = 1f;
+                extraTrailValues[i] = 1f;
+            }
+        }
+
+        Transform parent = staminaFill.transform.parent;
+        int baseSibling = staminaTrailFill != null ? staminaTrailFill.transform.GetSiblingIndex() : staminaFill.transform.GetSiblingIndex();
+
+        for (int i = 0; i < needed; i++)
+        {
+            float scaleMul = 1f + (i + 1) * Mathf.Max(0.1f, extraRingScaleStep);
+            if (extraRingBgs[i] == null)
+            {
+                extraRingBgs[i] = CloneRingImage("ExtraStaminaBg_" + (i + 2), parent, baseSibling, scaleMul, extraRingBgColor);
+            }
+            if (extraRingTrails[i] == null)
+            {
+                int trailSibling = extraRingBgs[i] != null ? extraRingBgs[i].transform.GetSiblingIndex() + 1 : baseSibling + 1;
+                extraRingTrails[i] = CloneRingImage("ExtraStaminaTrail_" + (i + 2), parent, trailSibling, scaleMul, staminaTrailColor);
+            }
+            if (extraStaminaRings[i] == null)
+            {
+                Color c = (extraRingColors != null && extraRingColors.Length > 0)
+                    ? extraRingColors[Mathf.Min(i, extraRingColors.Length - 1)]
+                    : staminaHigh;
+                int fillSibling = extraRingTrails[i] != null ? extraRingTrails[i].transform.GetSiblingIndex() + 1 : baseSibling + 2;
+                extraStaminaRings[i] = CloneRingImage("ExtraStaminaFill_" + (i + 2), parent, fillSibling, scaleMul, c);
+            }
+        }
+        extraRingsBuilt = true;
+    }
+
+    Image CloneRingImage(string goName, Transform parent, int siblingIdx, float scaleMul, Color color)
+    {
+        GameObject go = new GameObject(goName, typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(parent, false);
+        go.transform.SetSiblingIndex(Mathf.Max(0, siblingIdx));
+
+        RectTransform srcRt = staminaFill.rectTransform;
+        RectTransform dstRt = go.GetComponent<RectTransform>();
+        dstRt.anchorMin = srcRt.anchorMin;
+        dstRt.anchorMax = srcRt.anchorMax;
+        dstRt.pivot = srcRt.pivot;
+        dstRt.anchoredPosition = srcRt.anchoredPosition;
+        dstRt.sizeDelta = srcRt.sizeDelta;
+        dstRt.localScale = srcRt.localScale * scaleMul;
+        dstRt.localRotation = srcRt.localRotation;
+
+        Image img = go.GetComponent<Image>();
+        img.sprite = staminaFill.sprite;
+        img.type = Image.Type.Filled;
+        img.fillMethod = staminaFill.fillMethod;
+        img.fillOrigin = staminaFill.fillOrigin;
+        img.fillClockwise = staminaFill.fillClockwise;
+        img.preserveAspect = staminaFill.preserveAspect;
+        img.raycastTarget = false;
+        img.color = color;
+        img.fillAmount = 1f;
+        return img;
+    }
+
+    void UpdateTrailState(float curVal, ref float lastVal, ref float trailVal, ref float holdTimer, float dt)
+    {
+        if (curVal > lastVal + 0.01f)
+        {
+            // Vừa nhảy sang Dino mới -> reset vệt trắng về đầy ngay
+            trailVal = curVal;
+            holdTimer = 0f;
+        }
+        else if (curVal < lastVal - 0.0001f)
+        {
+            // Vừa tụt 1 khúc -> giữ vệt trắng ở mức cũ trong trailHoldTime rồi mới thu gọn
+            if (trailVal < lastVal) trailVal = lastVal;
+            holdTimer = trailHoldTime;
+        }
+        lastVal = curVal;
+
+        if (holdTimer > 0f)
+            holdTimer -= dt;
+        else if (trailVal > curVal)
+            trailVal = Mathf.MoveTowards(trailVal, curVal, Mathf.Max(0.05f, trailShrinkSpeed) * dt);
+        else
+            trailVal = curVal;
+    }
+
+    void ResetExtraTrails()
+    {
+        if (extraLastValues == null) return;
+        for (int i = 0; i < extraLastValues.Length; i++)
+        {
+            extraLastValues[i] = 1f;
+            if (extraTrailValues != null && i < extraTrailValues.Length) extraTrailValues[i] = 1f;
+            if (extraTrailTimers != null && i < extraTrailTimers.Length) extraTrailTimers[i] = 0f;
+            if (extraRingTrails != null && i < extraRingTrails.Length && extraRingTrails[i] != null)
+                extraRingTrails[i].fillAmount = 1f;
+        }
+    }
+
+    void UpdateExtraRings(float totalRings, float remRings, float dt)
+    {
+        int needed = Mathf.Max(0, Mathf.CeilToInt(totalRings) - 1);
+        if (needed > 0) EnsureExtraRings(needed);
+        if (extraStaminaRings == null) return;
+
+        for (int i = 0; i < extraStaminaRings.Length; i++)
+        {
+            float ringMin = 1f + i;
+            float ringVal = Mathf.Clamp01(remRings - ringMin);
+            bool hasRing = i < needed && totalRings > ringMin + 0.001f;
+            bool visible = hasRing && remRings > ringMin + 0.001f;
+
+            float trailVal = ringVal;
+            if (extraLastValues != null && i < extraLastValues.Length)
+            {
+                if (!hasRing)
+                {
+                    extraLastValues[i] = 0f;
+                    extraTrailValues[i] = 0f;
+                    extraTrailTimers[i] = 0f;
+                }
+                else
+                {
+                    UpdateTrailState(ringVal, ref extraLastValues[i], ref extraTrailValues[i], ref extraTrailTimers[i], dt);
+                    trailVal = extraTrailValues[i];
+                }
+            }
+
+            if (extraRingBgs != null && i < extraRingBgs.Length && extraRingBgs[i] != null)
+            {
+                if (extraRingBgs[i].gameObject.activeSelf != visible)
+                    extraRingBgs[i].gameObject.SetActive(visible);
+                if (visible)
+                    extraRingBgs[i].fillAmount = Mathf.Clamp01(totalRings - ringMin);
+            }
+
+            if (extraRingTrails != null && i < extraRingTrails.Length && extraRingTrails[i] != null)
+            {
+                bool showTrail = hasRing && (visible || trailVal > 0.001f);
+                if (extraRingTrails[i].gameObject.activeSelf != showTrail)
+                    extraRingTrails[i].gameObject.SetActive(showTrail);
+                if (showTrail)
+                {
+                    extraRingTrails[i].fillAmount = trailVal;
+                    extraRingTrails[i].color = staminaTrailColor;
+                }
+            }
+
+            if (extraStaminaRings[i] != null)
+            {
+                if (extraStaminaRings[i].gameObject.activeSelf != visible)
+                    extraStaminaRings[i].gameObject.SetActive(visible);
+                if (visible)
+                    extraStaminaRings[i].fillAmount = ringVal;
+            }
+        }
+    }
+
+    void SetExtraRingsVisible(bool visible)
+    {
+        if (extraStaminaRings != null)
+        {
+            for (int i = 0; i < extraStaminaRings.Length; i++)
+                if (extraStaminaRings[i] != null && extraStaminaRings[i].gameObject.activeSelf != visible)
+                    extraStaminaRings[i].gameObject.SetActive(visible);
+        }
+        if (extraRingTrails != null)
+        {
+            for (int i = 0; i < extraRingTrails.Length; i++)
+                if (extraRingTrails[i] != null && extraRingTrails[i].gameObject.activeSelf != visible)
+                    extraRingTrails[i].gameObject.SetActive(visible);
+        }
+        if (extraRingBgs != null)
+        {
+            for (int i = 0; i < extraRingBgs.Length; i++)
+                if (extraRingBgs[i] != null && extraRingBgs[i].gameObject.activeSelf != visible)
+                    extraRingBgs[i].gameObject.SetActive(visible);
+        }
     }
 }

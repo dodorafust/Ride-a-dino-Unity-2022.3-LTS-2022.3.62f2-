@@ -37,6 +37,10 @@ public class CameraRig : MonoBehaviour
     public float upwardMinDistanceRatio = 0.42f;
     public float upwardHeightBoost = 0.35f;
 
+    [Header("Độ rung màn hình (áp dụng cho mọi hiệu ứng rung)")]
+    [Min(0f)] public float shakeMultiplier = 1.5f;
+    [Min(0.1f)] public float shakeDurationMultiplier = 1.15f;
+
     Cinemachine3rdPersonFollow follow;
     float yaw, pitch = 22f, targetYaw, targetPitch, curDistance;
     Vector3 targetBaseLocalPos, smoothedPetSeatLocal, sittingAnchorWorldPos;
@@ -70,9 +74,11 @@ public class CameraRig : MonoBehaviour
     public void Shake(float intensity, float duration)
     {
         if (intensity <= 0f || duration <= 0f) return;
-        shakeIntensity = Mathf.Max(shakeIntensity, intensity);
-        shakeDuration = Mathf.Max(shakeDuration, duration);
-        shakeTimer = Mathf.Max(shakeTimer, duration);
+        float scaledInt = intensity * Mathf.Max(0f, shakeMultiplier);
+        float scaledDur = duration * Mathf.Max(0.1f, shakeDurationMultiplier);
+        shakeIntensity = Mathf.Max(shakeIntensity, scaledInt);
+        shakeDuration = Mathf.Max(shakeDuration, scaledDur);
+        shakeTimer = Mathf.Max(shakeTimer, scaledDur);
     }
 
     void LateUpdate()

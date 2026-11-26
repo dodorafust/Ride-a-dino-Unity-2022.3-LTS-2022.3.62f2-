@@ -45,7 +45,7 @@ public class SellDinosPopup : MonoBehaviour
     public Sprite dinoFallbackSprite;
 
     [Header("Màu sắc")]
-    public Color modalDimColor = new Color(0f, 0f, 0f, 0.62f);
+    public Color modalDimColor = new Color(0f, 0f, 0f, 0.8352941f);
     public bool closeOnBackdropClick = false;
     public Color headerBarColor = new Color(0.45f, 0.90f, 0.14f, 1f);
     public Color panelBgColor = new Color(0.14f, 0.16f, 0.18f, 0.97f);
@@ -244,8 +244,7 @@ public class SellDinosPopup : MonoBehaviour
         if (modalBackdrop != null)
         {
             Button bdBtn = modalBackdrop.GetComponent<Button>();
-            if (bdBtn != null)
-                bdBtn.onClick.AddListener(delegate { if (closeOnBackdropClick) Hide(); });
+            if (bdBtn != null) Destroy(bdBtn);
         }
     }
 
@@ -271,7 +270,7 @@ public class SellDinosPopup : MonoBehaviour
             Transform existingBd = parent.Find("SellModalBackdrop");
             GameObject bdGo = existingBd != null
                 ? existingBd.gameObject
-                : new GameObject("SellModalBackdrop", typeof(RectTransform), typeof(Image), typeof(Button));
+                : new GameObject("SellModalBackdrop", typeof(RectTransform), typeof(Image));
             if (existingBd == null) bdGo.transform.SetParent(parent, false);
             RectTransform bdRt = bdGo.GetComponent<RectTransform>();
             bdRt.anchorMin = Vector2.zero;

@@ -6,92 +6,177 @@ using UnityEngine.UI;
 // Helper hiệu ứng Pop / Bounce (nảy lò xo) dùng chung cho Popup và Nút bấm UI.
 public static class UIEffectUtil
 {
+    static readonly System.Collections.Generic.Dictionary<RectTransform, Vector3> popBaseScales = new System.Collections.Generic.Dictionary<RectTransform, Vector3>();
+
     public static Coroutine PlaySpringPop(MonoBehaviour host, RectTransform target, Coroutine running,
                                           float duration = 0.28f, float startScale = 0.68f, float overshoot = 1.07f)
     {
         if (host == null || target == null || !host.gameObject.activeInHierarchy) return null;
         if (running != null) host.StopCoroutine(running);
-        return host.StartCoroutine(SpringPopRoutine(target, duration, startScale, overshoot));
+        if (!popBaseScales.TryGetValue(target, out Vector3 baseScale) || baseScale.sqrMagnitude < 0.0001f)
+        {
+            baseScale = target.localScale;
+            if (baseScale.sqrMagnitude < 0.0001f) baseScale = Vector3.one;
+            popBaseScales[target] = baseScale;
+        }
+        return host.StartCoroutine(SpringPopRoutine(target, baseScale, duration, startScale, overshoot));
     }
 
     public static void AttachButtonBounce(MonoBehaviour host, Button btn, float punch = 0.14f, float duration = 0.18f)
     {
         if (btn == null) return;
-        UIButtonBouncer b = btn.GetComponent<UIButtonBouncer>();
-        if (b == null) b = btn.gameObject.AddComponent<UIButtonBouncer>();
-        b.Configure(btn, punch, duration);
+        AttachSpring(btn.gameObject, btn, punch);
     }
 
-    class UIButtonBouncer : MonoBehaviour, IPointerClickHandler
+    public static void AttachSpring(GameObject go, Selectable sel = null, float punch = 0.14f)
     {
-        Button button;
-        float punch = 0.14f;
-        float duration = 0.18f;
+        if (go == null) return;
+        UIButtonBouncer b = go.GetComponent<UIButtonBouncer>();
+        if (b == null) b = go.AddComponent<UIButtonBouncer>();
+        b.Configure(sel, punch);
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void InitGlobalSpringAttacher()
+    {
+        if (Object.FindObjectOfType<UISpringGlobalAttacher>() != null) return;
+        GameObject go = new GameObject("_UISpringGlobalAttacher");
+        Object.DontDestroyOnLoad(go);
+        go.AddComponent<UISpringGlobalAttacher>();
+    }
+
+    class UISpringGlobalAttacher : MonoBehaviour
+    {
+        float scanTimer;
+
+        void Start() { ScanAndAttach(); }
+
+        void Update()
+        {
+            scanTimer -= Time.unscaledDeltaTime;
+            if (scanTimer <= 0f)
+            {
+                scanTimer = 0.35f;
+                ScanAndAttach();
+            }
+        }
+
+        void ScanAndAttach()
+        {
+            Button[] btns = Object.FindObjectsOfType<Button>(false);
+            for (int i = 0; i < btns.Length; i++)
+            {
+                Button b = btns[i];
+                if (b == null) continue;
+                if (b.gameObject.name.IndexOf("Backdrop", System.StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                if (b.GetComponent<UIButtonBouncer>() == null)
+                    AttachSpring(b.gameObject, b, 0.14f);
+            }
+
+            Toggle[] toggles = Object.FindObjectsOfType<Toggle>(false);
+            for (int i = 0; i < toggles.Length; i++)
+            {
+                Toggle t = toggles[i];
+                if (t != null && t.GetComponent<UIButtonBouncer>() == null)
+                    AttachSpring(t.gameObject, t, 0.12f);
+            }
+
+            JumpButton[] jumps = Object.FindObjectsOfType<JumpButton>(false);
+            for (int i = 0; i < jumps.Length; i++)
+            {
+                JumpButton j = jumps[i];
+                if (j != null && j.GetComponent<UIButtonBouncer>() == null)
+                    AttachSpring(j.gameObject, j.GetComponent<Selectable>(), 0.15f);
+            }
+        }
+    }
+
+    class UIButtonBouncer : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+    {
+        Selectable selectable;
+        float pressScale = 0.86f;
+        float stiffness = 420f;
+        float damping = 20f;
         Vector3 baseScale = Vector3.one;
         bool hasBaseScale;
-        Coroutine routine;
+        bool isPressed;
+        float curScaleMul = 1f;
+        float targetScaleMul = 1f;
+        float vel;
 
         void Awake()
         {
             baseScale = transform.localScale;
             if (baseScale.sqrMagnitude < 0.0001f) baseScale = Vector3.one;
             hasBaseScale = true;
+            if (selectable == null) selectable = GetComponent<Selectable>();
         }
 
-        public void Configure(Button btn, float punchAmt, float dur)
+        public void Configure(Selectable sel, float punchAmt)
         {
-            button = btn;
-            punch = punchAmt;
-            duration = dur;
+            if (sel != null) selectable = sel;
+            pressScale = Mathf.Clamp(1f - punchAmt, 0.65f, 0.96f);
             if (!hasBaseScale) Awake();
         }
 
-        public void OnPointerClick(PointerEventData eventData)
+        public void OnPointerDown(PointerEventData eventData)
         {
-            if (button != null && !button.interactable) return;
-            if (!gameObject.activeInHierarchy) return;
-            if (routine != null) StopCoroutine(routine);
-            routine = StartCoroutine(BounceRoutine());
+            if (selectable != null && !selectable.interactable) return;
+            isPressed = true;
+            targetScaleMul = pressScale;
+            vel = Mathf.Min(vel, -3.5f);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (!isPressed) return;
+            isPressed = false;
+            targetScaleMul = 1f;
+            vel = Mathf.Max(vel, 4.5f); // bật nảy lò xo vượt ngưỡng 1.0 khi thả tay
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (!isPressed) return;
+            isPressed = false;
+            targetScaleMul = 1f;
         }
 
         void OnDisable()
         {
-            if (routine != null)
-            {
-                StopCoroutine(routine);
-                routine = null;
-            }
+            isPressed = false;
+            curScaleMul = 1f;
+            targetScaleMul = 1f;
+            vel = 0f;
             if (hasBaseScale) transform.localScale = baseScale;
         }
 
-        IEnumerator BounceRoutine()
+        void Update()
         {
-            RectTransform rt = transform as RectTransform;
-            float dur = Mathf.Max(0.06f, duration);
-            float t = 0f;
-            while (t < 1f && rt != null)
+            if (!hasBaseScale) return;
+            if (!isPressed && Mathf.Abs(curScaleMul - 1f) < 0.0005f && Mathf.Abs(vel) < 0.001f)
             {
-                t = Mathf.Min(1f, t + Time.unscaledDeltaTime / dur);
-                float s;
-                if (t < 0.4f)
-                    s = Mathf.Lerp(1f, 1f - punch, t / 0.4f);
-                else if (t < 0.78f)
-                    s = Mathf.Lerp(1f - punch, 1f + punch * 0.55f, (t - 0.4f) / 0.38f);
-                else
-                    s = Mathf.Lerp(1f + punch * 0.55f, 1f, (t - 0.78f) / 0.22f);
-                rt.localScale = baseScale * s;
-                yield return null;
+                if (curScaleMul != 1f)
+                {
+                    curScaleMul = 1f;
+                    transform.localScale = baseScale;
+                }
+                return;
             }
-            if (rt != null) rt.localScale = baseScale;
-            routine = null;
+
+            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.033f);
+            float accel = (targetScaleMul - curScaleMul) * stiffness - vel * damping;
+            vel += accel * dt;
+            curScaleMul += vel * dt;
+            transform.localScale = baseScale * Mathf.Max(0.4f, curScaleMul);
         }
     }
 
-    static IEnumerator SpringPopRoutine(RectTransform target, float duration, float startScale, float overshoot)
+    static IEnumerator SpringPopRoutine(RectTransform target, Vector3 baseScale, float duration, float startScale, float overshoot)
     {
         float dur = Mathf.Max(0.08f, duration);
         float t = 0f;
-        target.localScale = Vector3.one * startScale;
+        target.localScale = baseScale * startScale;
 
         while (t < 1f && target != null)
         {
@@ -113,10 +198,10 @@ public static class UIEffectUtil
                 float p = (t - 0.84f) / 0.16f;
                 scale = Mathf.Lerp(0.975f, 1f, p);
             }
-            target.localScale = Vector3.one * scale;
+            target.localScale = baseScale * scale;
             yield return null;
         }
-        if (target != null) target.localScale = Vector3.one;
+        if (target != null) target.localScale = baseScale;
     }
 
     static readonly System.Collections.Generic.Dictionary<int, Sprite> roundedCache = new System.Collections.Generic.Dictionary<int, Sprite>();
